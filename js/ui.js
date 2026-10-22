@@ -1,34 +1,17 @@
 /* ==========================================================================
-   Ancient Arcane Bastion (古域魔陣：守護神殿) - Mobile UI, Modals & Skill Tree
-   v1.5.0:
-   - Step-On & Modal Building Selection:
-     1) Select by Type First (⚡ 元素魔塔 / ☄️ 破甲重塔 / 🛡️ 派兵兵營)
-     2) Show Towers of Selected Type
-     3) Dynamic 簡介 (Description & Stats Inspector) for Selected Type / Tower / Building
-   - Redesigned 4-Tier Hierarchical Skill Tree / Tech Tree:
-     1) 3 Branch Trees (⚔️ 戰術主宰樹 / 🪙 煉金經濟樹 / 🏰 要塞神工樹)
-     2) Visual SVG Tree Connector Lines (Root -> Left/Right Branches -> Keystone Ultimate)
-     3) Parent-Child Prerequisite Logic (Requires Parent Lv.3+) & Node 簡介 Inspector
-   - Dual Defense Status (城防耐久 + 守護大本營 HP Bars) & Live 3-Road Threat Radar
+   Ancient Arcane Bastion (古域魔陣：守護神殿) - Mobile UI, Modals & Defense Hub (v1.6.0)
+   - Ultra-compact 2-Row Top HUD (Height <= 68px, perfect for iPhone)
+   - Locked 3-Line Upgrade View for built towers (Dmg, Speed, Range, Pouring bar)
+   - Type-First selection for empty plots (Type -> Towers -> Confirm Build)
+   - Multi-hall & Multi-checkpoint status rendering
+   - 4-Tier Hierarchical Skill Tree with SVG Connectors & Node Inspector
    ========================================================================== */
 
 window.GameUI = {
   activeModal: null,
   uiTimer: 0,
-
-  // Step-On Context Card Selection State
-  lastContextPadId: null,
-  selectedStepTypeId: "type_elemental",
-  selectedStepBpId: null,
-  stepIntroMode: "tower", // "type" or "tower"
-
-  // Modal Selection State (Pads & Blueprints Modal)
-  modalSelectedTypeId: "type_elemental",
-  modalSelectedBpId: "bp_arcane_spire",
-  modalIntroMode: "tower", // "type", "tower", or "pad"
-  modalSelectedPadId: null,
-
-  // Skill Tree Selection State
+  selectedBuildTypeId: "type_elemental",
+  selectedBuildBpId: "bp_arcane_spire",
   activeSkillBranch: "combat",
   selectedTalentId: "t_hero_dmg",
 
@@ -54,7 +37,6 @@ window.GameUI = {
     return String(v);
   },
 
-  // ================= SKILL TREE PREREQUISITE HELPER =================
   isTalentUnlocked: function(tal) {
     if (!tal || !tal.reqId) return true;
     var st = window.GameEngine.state;
@@ -92,7 +74,7 @@ window.GameUI = {
     return { unlocked: unlocked, text: singleTxt };
   },
 
-  // ================= TOP HUD UPDATER =================
+  // ================= ULTRA-COMPACT 2-ROW TOP HUD =================
   updateHUD: function() {
     var eng = window.GameEngine;
     if (!eng || !eng.state) return;
@@ -106,82 +88,67 @@ window.GameUI = {
     if (elMana) elMana.textContent = this.formatNum(st.mana);
     if (elSoul) elSoul.textContent = this.formatNum(st.souls);
 
-    // 2. Realm and Wave
-    var realm = eng.getCurrentRealm();
-    var elRealm = document.getElementById("hud-realm-name");
-    var elWave = document.getElementById("hud-wave-num");
-    if (elRealm) elRealm.textContent = realm.name;
-    if (elWave) elWave.textContent = "第 " + st.wave + " / " + realm.wavesToClear + " 波";
-
-    // 3. Dual Defense Status Bars: Wall & Town Hall
+    // 2. Defense Status (Adapts to Stage Layout!)
+    var elWallLbl = document.getElementById("hud-wall-lbl");
     var elWallText = document.getElementById("hud-wall-text");
     var elWallBar = document.getElementById("hud-wall-bar");
-    if (elWallText && eng.wall) {
-      elWallText.textContent = Math.ceil(eng.wall.hp) + "/" + eng.wall.maxHp;
-    }
-    if (elWallBar && eng.wall && eng.wall.maxHp > 0) {
-      var wPct = Math.max(0, Math.min(100, Math.round((eng.wall.hp / eng.wall.maxHp) * 100)));
-      elWallBar.style.width = wPct + "%";
-      if (wPct < 30) {
-        elWallBar.style.background = "linear-gradient(90deg, #ef4444, #f87171)";
-      } else if (wPct < 60) {
-        elWallBar.style.background = "linear-gradient(90deg, #f59e0b, #fbbf24)";
+
+    if (eng.layoutType === "long_line_three_checkpoints" && eng.checkpoints && eng.checkpoints.length > 0) {
+      // Find active checkpoint
+      var activeCp = eng.checkpoints.find(function(c) { return !c.breached; }) || eng.checkpoints[2];
+      if (elWallLbl) elWallLbl.textContent = "關卡 #" + activeCp.index;
+      if (elWallText) elWallText.textContent = Math.ceil(activeCp.hp) + "/" + activeCp.maxHp;
+      if (elWallBar && activeCp.maxHp > 0) {
+        var cpPct = Math.max(0, Math.min(100, Math.round((activeCp.hp / activeCp.maxHp) * 100)));
+        elWallBar.style.width = cpPct + "%";
+        elWallBar.style.background = cpPct < 30 ? "#ef4444" : (cpPct < 60 ? "#f59e0b" : "#38bdf8");
+      }
+    } else if (eng.layoutType === "multiple_halls_outpost") {
+      var outpost = (eng.halls || []).find(function(h) { return h.isOutpost; });
+      if (outpost && outpost.hp > 0) {
+        if (elWallLbl) elWallLbl.textContent = "前哨廳";
+        if (elWallText) elWallText.textContent = Math.ceil(outpost.hp) + "/" + outpost.maxHp;
+        if (elWallBar && outpost.maxHp > 0) {
+          var oPct = Math.max(0, Math.min(100, Math.round((outpost.hp / outpost.maxHp) * 100)));
+          elWallBar.style.width = oPct + "%";
+          elWallBar.style.background = oPct < 30 ? "#ef4444" : "#f59e0b";
+        }
       } else {
-        elWallBar.style.background = "linear-gradient(90deg, #0284c7, #38bdf8)";
+        if (elWallLbl) elWallLbl.textContent = "城防(已破)";
+        if (elWallText) elWallText.textContent = "0/" + eng.wall.maxHp;
+        if (elWallBar) elWallBar.style.width = "0%";
+      }
+    } else {
+      if (elWallLbl) elWallLbl.textContent = "城防耐久";
+      if (elWallText && eng.wall) elWallText.textContent = Math.ceil(eng.wall.hp) + "/" + eng.wall.maxHp;
+      if (elWallBar && eng.wall && eng.wall.maxHp > 0) {
+        var wPct = Math.max(0, Math.min(100, Math.round((eng.wall.hp / eng.wall.maxHp) * 100)));
+        elWallBar.style.width = wPct + "%";
+        elWallBar.style.background = wPct < 30 ? "#ef4444" : (wPct < 60 ? "#f59e0b" : "#38bdf8");
       }
     }
 
+    // Town Hall Core
     var elHallText = document.getElementById("hud-hall-text");
     var elHallBar = document.getElementById("hud-hall-bar");
-    if (elHallText && eng.townHall) {
-      elHallText.textContent = Math.ceil(eng.townHall.hp) + "/" + eng.townHall.maxHp;
-    }
+    if (elHallText && eng.townHall) elHallText.textContent = Math.ceil(eng.townHall.hp) + "/" + eng.townHall.maxHp;
     if (elHallBar && eng.townHall && eng.townHall.maxHp > 0) {
       var hPct = Math.max(0, Math.min(100, Math.round((eng.townHall.hp / eng.townHall.maxHp) * 100)));
       elHallBar.style.width = hPct + "%";
-      if (hPct < 30) {
-        elHallBar.style.background = "linear-gradient(90deg, #ef4444, #f43f5e)";
-      } else if (hPct < 60) {
-        elHallBar.style.background = "linear-gradient(90deg, #f59e0b, #fbbf24)";
-      } else {
-        elHallBar.style.background = "linear-gradient(90deg, #059669, #22c55e)";
-      }
+      elHallBar.style.background = hPct < 30 ? "#ef4444" : (hPct < 60 ? "#f59e0b" : "#22c55e");
     }
 
-    // 4. Live 3-Road Threat Radar
-    var elRadarText = document.getElementById("hud-radar-text");
+    // 3. Compact 1-Line Ticker (Clickable to open Codex/Advisor/Quest)
+    var elTicker = document.getElementById("hud-ticker-text");
     var elRadarDot = document.getElementById("hud-radar-dot");
-    if (elRadarText) {
-      var nCt = 0, cCt = 0, sCt = 0;
-      eng.enemies.forEach(function(e) {
-        if (e.roadId === "road_north") nCt++;
-        else if (e.roadId === "road_south") sCt++;
-        else cCt++;
-      });
-      var totalEnemies = nCt + cCt + sCt;
-      var gateStatus = eng.wall.hp <= 0 ? " ⚠️ 城門失守!" : "";
-      elRadarText.textContent = "⚔️ 軍情：北路 " + nCt + " | 中路 " + cCt + " | 南路 " + sCt + gateStatus;
+    var realm = eng.getCurrentRealm();
+    var enemyCount = eng.enemies.length;
+
+    if (elTicker) {
+      elTicker.textContent = realm.name.split("：")[0] + " · 第 " + st.wave + " 波 | ⚔️ " + enemyCount + " 敵";
       if (elRadarDot) {
-        elRadarDot.style.background = totalEnemies > 10 || eng.wall.hp <= 0 ? "#ef4444" : "#22c55e";
+        elRadarDot.style.background = (enemyCount > 8 || eng.gateBreached) ? "#ef4444" : "#22c55e";
       }
-    }
-
-    // 5. Quest Banner
-    var q = window.GAME_DATA.quests[st.questIndex];
-    var elQuest = document.getElementById("hud-quest-text");
-    if (elQuest) {
-      if (q) {
-        elQuest.textContent = "🎯 主線 #" + q.id + "：" + q.title;
-      } else {
-        elQuest.textContent = "👑 已完成全部引導主線！挑戰五章古域與無盡深淵";
-      }
-    }
-
-    // 6. Arcane Tactical Advisor Banner
-    var adv = eng.getTacticalAdvice();
-    var elAdv = document.getElementById("hud-advisor-text");
-    if (elAdv && adv) {
-      elAdv.textContent = "🧙‍♂️ 軍師建議：" + adv.title;
     }
 
     var dotTalent = document.getElementById("dot-talent");
@@ -189,29 +156,24 @@ window.GameUI = {
       dotTalent.style.display = st.souls >= 1 ? "block" : "none";
     }
 
-    // 7. Defeat check
     if (eng.townHall && eng.townHall.hp <= 0 && this.activeModal !== "defeat") {
       this.openModal("defeat");
     }
   },
 
-  // ==========================================================================
-  // STEP-ON CONTEXT CARD:
-  // 1) Select by Type First (#pad-type-tabs)
-  // 2) Show Towers of Selected Type (#pad-tower-picker)
-  // 3) Show Dynamic 簡介 for Selected Type / Tower / Building (#pad-selection-intro)
-  // ==========================================================================
+  // ================= STEP-ON CONTEXT CARD (CLEAN & NON-OBSTRUCTIVE) =================
   updateContextCard: function() {
     var card = document.getElementById("pad-context-card");
     if (!card) return;
     var eng = window.GameEngine;
     var padId = eng.hero.activePadId;
+
     if (!padId) {
       card.classList.add("hidden");
-      this.lastContextPadId = null;
       return;
     }
-    var pad = window.GAME_DATA.groundPads.find(function(p) { return p.id === padId; });
+
+    var pad = (window.GAME_DATA.groundPads || []).find(function(p) { return p.id === padId; });
     if (!pad) {
       card.classList.add("hidden");
       return;
@@ -220,206 +182,118 @@ window.GameUI = {
     card.classList.remove("hidden");
     var st = eng.state.pads[pad.id] || { level: 0, invested: 0 };
     var rem = eng.getPadRemaining(pad);
+    var cost = eng.getPadCost(pad);
     var curIcon = pad.currency === "mana" ? "💎" : "🪙";
-    var stationedBp = pad.customizable ? eng.getPadBlueprint(pad) : null;
+    var bp = pad.customizable ? eng.getPadBlueprint(pad) : null;
+    var isBuilt = st.level >= 1;
 
-    // When stepping onto a new pad, initialize default type & selected tower to the stationed blueprint
-    if (this.lastContextPadId !== pad.id) {
-      this.lastContextPadId = pad.id;
-      if (pad.customizable && stationedBp) {
-        this.selectedStepTypeId = stationedBp.typeId || "type_elemental";
-        this.selectedStepBpId = stationedBp.id;
-        this.stepIntroMode = "tower";
-      } else {
-        this.stepIntroMode = "building";
-      }
-      this.renderStepOnSelectorUI(pad);
-    }
+    // CASE 1: Built Customizable Tower (LOCKED - CANNOT CHANGE TYPE AFTER BUILT!)
+    if (pad.customizable && isBuilt && bp) {
+      var calcDmg = eng.getTowerDamage(pad, st.level);
+      var progPct = Math.min(100, Math.round((st.invested / cost) * 100));
 
-    // Update top header bar of the context card (live remaining cost & level)
-    var titleEl = document.getElementById("pad-context-title");
-    var subEl = document.getElementById("pad-context-sub");
-    if (titleEl) {
-      var dispName = stationedBp ? ( pad.name + " · 駐守【" + stationedBp.icon + stationedBp.name + "】") : (pad.icon + " " + pad.name);
-      titleEl.textContent = dispName + (pad.type === "expand" ? "" : " Lv." + st.level);
-    }
-    if (subEl) {
+      var html = '<div class="pad-built-view">';
+      // Line 1: Tower Title, Level, Role & Upgrade Cost
+      html += '<div class="pad-header-row">';
+      html += '<span class="pad-title-text">' + bp.icon + ' ' + bp.name + ' Lv.' + st.level + ' (' + bp.roleTag + ')</span>';
       if (st.level >= pad.maxLevel) {
-        subEl.textContent = "✨ 已達最高等級 MAX";
+        html += '<span class="pad-cost-badge" style="color:#4ade80;">✨ 已達最高級</span>';
       } else {
-        subEl.textContent = "⬆️ 踏陣升級還需 " + curIcon + rem;
+        html += '<span class="pad-cost-badge">⬆️ 升級需 ' + curIcon + rem + '</span>';
       }
-    }
+      html += '</div>';
 
-    // If non-customizable building, keep live stats refreshed
-    if (!pad.customizable) {
-      this.renderStepOnIntroBox(pad);
-    }
-  },
-
-  renderStepOnSelectorUI: function(pad) {
-    var typeTabsEl = document.getElementById("pad-type-tabs");
-    var pickerEl = document.getElementById("pad-tower-picker");
-    if (!typeTabsEl || !pickerEl) return;
-
-    if (!pad.customizable) {
-      typeTabsEl.style.display = "none";
-      pickerEl.style.display = "none";
-      this.renderStepOnIntroBox(pad);
-      return;
-    }
-
-    typeTabsEl.style.display = "flex";
-    pickerEl.style.display = "flex";
-
-    var eng = window.GameEngine;
-    var st = eng.state.pads[pad.id] || {};
-    var stationedBpId = st.blueprintId || pad.defaultBlueprint || "bp_arcane_spire";
-    var stationedBp = eng.getBlueprintById(stationedBpId);
-    var self = this;
-
-    // 1. Render Step 1: Type Tabs (元素魔塔 / 破甲重塔 / 派兵兵營)
-    var tabsHtml = "";
-    (window.GAME_DATA.towerTypes || []).forEach(function(tType) {
-      var isTypeActive = self.selectedStepTypeId === tType.id;
-      var hasStationedHere = stationedBp && stationedBp.typeId === tType.id;
-      var cls = "type-tab-btn" + (isTypeActive ? " active-type-tab" : "");
-      tabsHtml += '<button class="' + cls + '" onclick="window.uiSelectStepType(\'' + pad.id + '\', \'' + tType.id + '\')">';
-      tabsHtml += '<span>' + tType.icon + ' ' + tType.name + '</span>';
-      if (hasStationedHere) {
-        tabsHtml += '<span style="color:#4ade80;font-size:0.65rem;">●駐</span>';
-      }
-      tabsHtml += '</button>';
-    });
-    typeTabsEl.innerHTML = tabsHtml;
-
-    // 2. Render Step 2: Towers of the Selected Type
-    var towersOfType = window.GAME_DATA.towerBlueprints.filter(function(bp) {
-      return bp.typeId === self.selectedStepTypeId;
-    });
-
-    var chipsHtml = "";
-    var adv = eng.getTacticalAdvice();
-    towersOfType.forEach(function(bp) {
-      var unlocked = eng.isBlueprintUnlocked(bp.id);
-      var isStationed = stationedBpId === bp.id;
-      var isSelectedPreview = (self.stepIntroMode === "tower" && self.selectedStepBpId === bp.id);
-      var isRec = adv && adv.recBpId === bp.id;
-      var cIcon = bp.unlockCurrency === "mana" ? "💎" : "🪙";
-
-      var chipCls = "tower-chip" +
-        (isSelectedPreview ? " selected-preview-chip" : "") +
-        (isStationed ? " stationed-chip" : "") +
-        (!unlocked ? " locked-chip" : "");
-
-      chipsHtml += '<button class="' + chipCls + '" onclick="window.uiSelectStepTower(\'' + pad.id + '\', \'' + bp.id + '\')">';
-      chipsHtml += '<span>' + bp.icon + ' ' + bp.name + '</span>';
-      if (isStationed) {
-        chipsHtml += '<span style="color:#4ade80;font-size:0.68rem;">✓駐守</span>';
-      } else if (!unlocked) {
-        chipsHtml += '<span style="color:#fde047;font-size:0.68rem;">🔒' + cIcon + bp.unlockCost + '</span>';
-      } else if (isRec) {
-        chipsHtml += '<span style="color:#38bdf8;font-size:0.68rem;">★推薦</span>';
+      // Line 2: The 3 essential stats (Damage, Atk Rate, Range or Troop stats)
+      html += '<div class="pad-stats-strip">';
+      if (bp.category === "barracks") {
+        html += '<span class="pad-stat-pill">🛡️ 兵命: ' + bp.troopHp + '</span>';
+        html += '<span class="pad-stat-pill">⚔️ 兵攻: ' + bp.troopDmg + '</span>';
+        html += '<span class="pad-stat-pill">⏱️ 出兵: ' + bp.spawnInterval + 's</span>';
       } else {
-        chipsHtml += '<span style="color:#cbd5e1;font-size:0.66rem;">可選</span>';
+        html += '<span class="pad-stat-pill">💥 傷害: ' + calcDmg + '</span>';
+        html += '<span class="pad-stat-pill">⚡ 攻速: ' + bp.atkRate + 's</span>';
+        html += '<span class="pad-stat-pill">🎯 射程: ' + bp.range + '</span>';
       }
-      chipsHtml += '</button>';
-    });
-    pickerEl.innerHTML = chipsHtml;
+      html += '<span style="color:#94a3b8;font-size:0.65rem;margin-left:auto;">[類型已鎖定]</span>';
+      html += '</div>';
 
-    // 3. Render Step 3: Dynamic 簡介 Box for the Selected Type or Selected Tower
-    this.renderStepOnIntroBox(pad);
-  },
-
-  renderStepOnIntroBox: function(pad) {
-    var introEl = document.getElementById("pad-selection-intro");
-    if (!introEl || !pad) return;
-    var eng = window.GameEngine;
-    var st = eng.state.pads[pad.id] || { level: 0, invested: 0 };
-
-    // Case A: Non-Customizable Functional Building Pad (Town Hall, Wall Fortify, Gold Vault, Mana Well, Forge, Shrine, Portal, Expand)
-    if (!pad.customizable) {
-      var htmlB = '<div class="intro-header-row">';
-      htmlB += '<span style="font-weight:900;font-size:0.78rem;color:#fde047;">📖 建築簡介：' + pad.icon + ' ' + pad.name + '</span>';
-      htmlB += '<span style="font-size:0.68rem;color:#4ade80;font-weight:800;">' + (pad.type === "expand" ? "領地擴張陣" : "當前 Lv." + st.level + "/" + pad.maxLevel) + '</span>';
-      htmlB += '</div>';
-      htmlB += '<div style="font-size:0.72rem;color:#e2e8f0;line-height:1.38;">' + pad.desc + '</div>';
-
-      if (pad.type === "town_hall") {
-        htmlB += '<div class="intro-stats-row"><span>🏛️ 當前大本營生命：' + Math.ceil(eng.townHall.hp) + '/' + eng.townHall.maxHp + '</span><span>🏹 自衛重弩傷害：' + Math.round(eng.getHeroDamage() * 1.4) + '</span></div>';
-      } else if (pad.type === "wall") {
-        htmlB += '<div class="intro-stats-row"><span>🏰 當前城防耐久：' + Math.ceil(eng.wall.hp) + '/' + eng.wall.maxHp + '</span><span>⚡ 升級立即修復 50% 城防</span></div>';
-      } else if (pad.type === "mine") {
-        var yieldMult = (1 + eng.getTalentVal("t_mine_yield")) * eng.getDivinityMult();
-        var gps = (st.level * 4.2 * yieldMult * eng.getCurrentRealm().rewardMult).toFixed(1);
-        htmlB += '<div class="intro-stats-row"><span>🪙 當前產金：+' + gps + ' / 秒</span><span>🧚 派駐採集精靈：' + Math.min(5, 1 + Math.floor(st.level / 5)) + ' 隻</span></div>';
-      } else if (pad.type === "mana_well") {
-        var mps = (st.level * 0.55 * (1 + eng.getTalentVal("t_mine_yield")) * eng.getDivinityMult()).toFixed(2);
-        htmlB += '<div class="intro-stats-row"><span>💎 當前魔晶產量：+' + mps + ' / 秒</span><span>📖 技能冷卻加速：+' + Math.round(st.level * 1.5) + '%</span></div>';
+      // Line 3: Thin Pouring Progress Bar
+      if (st.level < pad.maxLevel) {
+        html += '<div class="pad-progress-track"><div class="pad-progress-fill" style="width:' + progPct + '%;"></div></div>';
       }
-      introEl.innerHTML = htmlB;
+      html += '</div>';
+
+      card.innerHTML = html;
       return;
     }
 
-    // Case B: User clicked a Type Tab and is viewing the Type Summary
-    var self = this;
-    var curType = (window.GAME_DATA.towerTypes || []).find(function(t) { return t.id === self.selectedStepTypeId; }) || window.GAME_DATA.towerTypes[0];
+    // CASE 2: Unbuilt Customizable Plot (st.level === 0) -> Select Type First -> Pick Tower -> Confirm Build!
+    if (pad.customizable && !isBuilt) {
+      var self = this;
+      var curType = (window.GAME_DATA.towerTypes || []).find(function(t) { return t.id === self.selectedBuildTypeId; }) || window.GAME_DATA.towerTypes[0];
+      var towersOfType = window.GAME_DATA.towerBlueprints.filter(function(b) { return b.typeId === self.selectedBuildTypeId; });
+      var activeBp = eng.getBlueprintById(self.selectedBuildBpId || towersOfType[0].id);
+      var canAfford = eng.state.gold >= activeBp.buildCostGold;
 
-    if (this.stepIntroMode === "type" && curType) {
-      var htmlT = '<div class="intro-header-row">';
-      htmlT += '<span style="font-weight:900;font-size:0.78rem;color:' + curType.color + ';">📖 類別簡介：' + curType.icon + ' ' + curType.name + ' (' + curType.roleDesc + ')</span>';
-      htmlT += '<span style="font-size:0.68rem;color:#fde047;font-weight:800;">👆 請點擊上方該類別魔塔查看詳情與駐守</span>';
-      htmlT += '</div>';
-      htmlT += '<div style="font-size:0.72rem;color:#e2e8f0;line-height:1.38;">' + curType.summary + '</div>';
-      introEl.innerHTML = htmlT;
+      var htmlU = '<div class="pad-unbuilt-view">';
+      // Header
+      htmlU += '<div class="pad-header-row">';
+      htmlU += '<span class="pad-title-text" style="color:#38bdf8;">🔮 空置陣位 · 請先選類型</span>';
+      htmlU += '<span style="font-size:0.64rem;color:#fde047;font-weight:700;">建造後即永久鎖定</span>';
+      htmlU += '</div>';
+
+      // Step 1: Type Tabs
+      htmlU += '<div class="type-tabs-row">';
+      (window.GAME_DATA.towerTypes || []).forEach(function(tType) {
+        var isAct = self.selectedBuildTypeId === tType.id;
+        htmlU += '<button class="type-tab-btn ' + (isAct ? 'active-type-tab' : '') + '" onclick="window.uiSelectBuildType('' + pad.id + '', '' + tType.id + '')">';
+        htmlU += tType.icon + ' ' + tType.shortName;
+        htmlU += '</button>';
+      });
+      htmlU += '</div>';
+
+      // Step 2: Towers of that type
+      htmlU += '<div class="tower-picker-strip">';
+      towersOfType.forEach(function(b) {
+        var isSel = activeBp.id === b.id;
+        var unl = eng.isBlueprintUnlocked(b.id);
+        htmlU += '<button class="tower-chip ' + (isSel ? 'selected-preview-chip' : '') + '" onclick="window.uiSelectBuildTower('' + pad.id + '', '' + b.id + '')">';
+        htmlU += '<span>' + b.icon + ' ' + b.name + '</span>';
+        htmlU += '<span style="font-size:0.62rem;color:' + (unl ? '#4ade80' : '#fde047') + ';">' + (unl ? '🪙' + b.buildCostGold : '🔒解鎖') + '</span>';
+        htmlU += '</button>';
+      });
+      htmlU += '</div>';
+
+      // Step 3: Brief Description & Confirm Build Button
+      htmlU += '<div class="pad-build-confirm-row">';
+      htmlU += '<span class="pad-bp-summary">' + activeBp.icon + ' ' + activeBp.name + '：' + activeBp.roleTag + ' | ' + activeBp.adviceTag + '</span>';
+      htmlU += '<button class="btn-build-confirm" onclick="window.uiBuildTower('' + pad.id + '', '' + activeBp.id + '')">';
+      htmlU += '🔨 建造 (' + (activeBp.unlockCurrency === 'mana' ? '💎' : '🪙') + activeBp.buildCostGold + ')';
+      htmlU += '</button>';
+      htmlU += '</div>';
+
+      htmlU += '</div>';
+      card.innerHTML = htmlU;
       return;
     }
 
-    // Case C: Viewing a Specific Selected Tower / Barracks Blueprint 簡介
-    var bp = eng.getBlueprintById(this.selectedStepBpId || st.blueprintId || pad.defaultBlueprint);
-    if (!bp) return;
-
-    var unlocked = eng.isBlueprintUnlocked(bp.id);
-    var stationedBpId = st.blueprintId || pad.defaultBlueprint;
-    var isStationed = stationedBpId === bp.id;
-    var cIcon = bp.unlockCurrency === "mana" ? "💎" : "🪙";
-    var lvForCalc = Math.max(1, st.level);
-    var calcDmg = eng.getTowerDamage(pad, lvForCalc);
-
-    var html = '<div class="intro-header-row">';
-    html += '<div>';
-    html += '<span style="font-weight:900;font-size:0.8rem;color:' + bp.color + ';">📖 簡介：' + bp.icon + ' ' + bp.name + '</span> ';
-    html += '<span style="font-size:0.68rem;background:rgba(30,41,59,0.9);color:#fde047;padding:1px 6px;border-radius:5px;font-weight:800;">' + (curType ? curType.shortName : "") + ' · ' + bp.roleTag + '</span>';
-    html += '</div>';
-
-    // Action Button right in the 簡介 header so the player can station or unlock the selected tower
-    if (isStationed) {
-      html += '<span style="font-size:0.7rem;color:#4ade80;font-weight:900;">✅ 當前駐守中 (踏陣自動升級)</span>';
-    } else if (unlocked) {
-      html += '<button class="btn-emerald" style="padding:3px 9px;font-size:0.7rem;" onclick="window.uiConfirmStationTower(\'' + pad.id + '\', \'' + bp.id + '\')">🏰 駐守此陣位</button>';
+    // CASE 3: Non-Customizable Functional Building (Town Hall, Wall Fortify, Gold Mine, Mana Well, Forge, Shrine, Portal, Expand)
+    var htmlF = '<div class="pad-built-view">';
+    htmlF += '<div class="pad-header-row">';
+    htmlF += '<span class="pad-title-text">' + pad.icon + ' ' + pad.name + (pad.type === 'expand' ? '' : ' Lv.' + st.level) + '</span>';
+    if (st.level >= pad.maxLevel) {
+      htmlF += '<span class="pad-cost-badge" style="color:#4ade80;">✨ 最高級</span>';
     } else {
-      html += '<button class="btn-action" style="padding:3px 9px;font-size:0.7rem;" onclick="window.uiConfirmStationTower(\'' + pad.id + '\', \'' + bp.id + '\')">🔓 解鎖並駐守 (' + cIcon + bp.unlockCost + ')</button>';
+      htmlF += '<span class="pad-cost-badge">⬆️ 踏陣需 ' + curIcon + rem + '</span>';
     }
-    html += '</div>';
-
-    // Detailed Description
-    html += '<div style="font-size:0.72rem;color:#e2e8f0;line-height:1.36;">' + bp.desc + '</div>';
-
-    // Combat Stats Bar
-    html += '<div class="intro-stats-row">';
-    if (bp.category === "barracks") {
-      html += '<span>🛡️ 兵種生命：' + bp.troopHp + '</span>';
-      html += '<span>⚔️ 兵種傷害：' + bp.troopDmg + '</span>';
-      html += '<span>⏱️ 派兵間隔：' + bp.spawnInterval + 's</span>';
-    } else {
-      html += '<span>💥 預估傷害：' + calcDmg + ' (基礎 ' + bp.baseDmg + ')</span>';
-      html += '<span>⚡ 攻速：' + bp.atkRate + 's</span>';
-      html += '<span>🎯 射程：' + bp.range + '</span>';
+    htmlF += '</div>';
+    htmlF += '<div style="font-size:0.68rem;color:#cbd5e1;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + pad.desc + '</div>';
+    if (st.level < pad.maxLevel && st.invested > 0) {
+      var pPct = Math.min(100, Math.round((st.invested / cost) * 100));
+      htmlF += '<div class="pad-progress-track"><div class="pad-progress-fill" style="width:' + pPct + '%;"></div></div>';
     }
-    html += '<span style="color:#fde047;">💡 ' + bp.adviceTag + '</span>';
-    html += '</div>';
-
-    introEl.innerHTML = html;
+    htmlF += '</div>';
+    card.innerHTML = htmlF;
   },
 
   updateSkillCooldowns: function() {
@@ -440,7 +314,7 @@ window.GameUI = {
   updateTopButtons: function() {
     var btnAi = document.getElementById("btn-ai-toggle");
     if (btnAi) {
-      var labels = ["🤖 AI: 手動控制", "🤖 AI: 巡邏撿幣", "🤖 AI: 全自動踏陣"];
+      var labels = ["🤖 AI: 手動", "🤖 AI: 撿幣", "🤖 AI: 踏陣"];
       btnAi.textContent = labels[window.GameEngine.aiMode] || labels[0];
       if (window.GameEngine.aiMode > 0) {
         btnAi.classList.add("active-toggle");
@@ -475,14 +349,9 @@ window.GameUI = {
     container.appendChild(div);
     setTimeout(function() {
       if (div.parentNode) div.parentNode.removeChild(div);
-    }, 2650);
+    }, 2500);
   },
 
-  showDefeatModal: function() {
-    this.openModal("defeat");
-  },
-
-  // ================= MODAL DRAWER RENDERING =================
   openModal: function(tabName) {
     this.activeModal = tabName;
     var backdrop = document.getElementById("modal-backdrop");
@@ -493,25 +362,25 @@ window.GameUI = {
     backdrop.classList.remove("hidden");
 
     if (tabName === "pads") {
-      titleEl.innerHTML = "🏰 建築分類選單 & 陣位配置總覽 (先選類型 ➔ 再選魔塔與查看簡介)";
+      titleEl.innerHTML = "🏰 防線陣位與建築總覽";
       this.renderPadsModal(bodyEl);
     } else if (tabName === "townhall") {
-      titleEl.innerHTML = "🏛️ 守護大本營 (Citadel Hall) — 要塞防線中樞";
+      titleEl.innerHTML = "🏛️ 守護大本營與防線樞紐";
       this.renderTownHallModal(bodyEl);
     } else if (tabName === "hero") {
-      titleEl.innerHTML = "⚔️ 英雄職業與遠古聖物鍛造";
+      titleEl.innerHTML = "⚔️ 英雄職業與聖物鍛造";
       this.renderHeroModal(bodyEl);
     } else if (tabName === "talents") {
-      titleEl.innerHTML = "🌟 太古星盤技能科技樹 (4 階前置解鎖樹狀圖)";
+      titleEl.innerHTML = "🌟 太古星盤技能科技樹";
       this.renderTalentsModal(bodyEl);
     } else if (tabName === "realms") {
-      titleEl.innerHTML = "🗺️ 古域五章領域與古神轉生";
+      titleEl.innerHTML = "🗺️ 古域五大章節與古神轉生";
       this.renderRealmsModal(bodyEl);
     } else if (tabName === "codex") {
-      titleEl.innerHTML = "📖 戰役任務與魔物圖鑑 (10小時長線進度)";
+      titleEl.innerHTML = "📖 軍情戰役任務與魔物圖鑑";
       this.renderCodexModal(bodyEl);
     } else if (tabName === "defeat") {
-      titleEl.innerHTML = "⚠️ 要塞淪陷 — 守護大本營被毀";
+      titleEl.innerHTML = "⚠️ 要塞淪陷 — 大本營被毀";
       this.renderDefeatModal(bodyEl);
     }
   },
@@ -522,413 +391,111 @@ window.GameUI = {
     if (backdrop) backdrop.classList.add("hidden");
   },
 
-  // ==========================================================================
-  // 1. PADS & BUILDINGS MODAL:
-  //    Step 1: Select Type Tab (⚡ 元素魔塔 / ☄️ 破甲重塔 / 🛡️ 派兵兵營)
-  //    Step 2: Select Tower of that Type
-  //    Step 3: Detailed 簡介 Inspector & Quick Stationing on Any Plot
-  // ==========================================================================
+  // Pads Modal: Lists all pads of active stage & 10 Blueprints
   renderPadsModal: function(container) {
     var eng = window.GameEngine;
     var self = this;
+    var pads = window.GAME_DATA.groundPads || [];
 
-    var html = '';
-
-    // Step 1: Select Building Type First
-    html += '<div style="font-weight:900;color:#fde047;font-size:0.88rem;">① 第一步：選擇建築類型 (Select Building Type)</div>';
-    html += '<div class="skill-branch-tabs">';
-    (window.GAME_DATA.towerTypes || []).forEach(function(tType) {
-      var isAct = self.modalSelectedTypeId === tType.id;
-      html += '<button class="skill-branch-btn ' + (isAct ? 'active-branch' : '') + '" onclick="window.uiSelectModalTowerType(\'' + tType.id + '\')">';
-      html += '<span style="font-size:1.05rem;">' + tType.icon + ' ' + tType.name + '</span>';
-      html += '<span style="font-size:0.68rem;color:#cbd5e1;">' + tType.roleDesc + '</span>';
-      html += '</button>';
-    });
-    html += '</div>';
-
-    // Step 2: Show Towers of Selected Type
-    var curTypeObj = (window.GAME_DATA.towerTypes || []).find(function(t) { return t.id === self.modalSelectedTypeId; }) || window.GAME_DATA.towerTypes[0];
-    var filteredTowers = window.GAME_DATA.towerBlueprints.filter(function(bp) {
-      return bp.typeId === self.modalSelectedTypeId;
-    });
-
-    html += '<div style="font-weight:900;color:#38bdf8;font-size:0.88rem;margin-top:4px;">② 第二步：選擇【' + curTypeObj.name + '】旗下的建築查看簡介</div>';
+    var html = '<div style="font-weight:900;color:#fde047;font-size:0.86rem;">🏰 當前古域防禦陣位（已建造防禦塔類型已正式鎖定，空置陣位可自由自選）</div>';
     html += '<div class="card-grid">';
-    filteredTowers.forEach(function(bp) {
-      var unlocked = eng.isBlueprintUnlocked(bp.id);
-      var isSel = (self.modalIntroMode === "tower" && self.modalSelectedBpId === bp.id);
-      var cIcon = bp.unlockCurrency === "mana" ? "💎" : "🪙";
 
-      html += '<div class="rpg-card ' + (unlocked ? 'unlocked ' : '') + (isSel ? 'selected-card' : '') + '" style="cursor:pointer;" onclick="window.uiSelectModalTowerBp(\'' + bp.id + '\')">';
+    pads.forEach(function(pad) {
+      var st = eng.state.pads[pad.id] || { level: 0, invested: 0 };
+      var isBuilt = st.level >= 1;
+      var bp = pad.customizable ? eng.getPadBlueprint(pad) : null;
+      var isMax = st.level >= pad.maxLevel;
+      var rem = eng.getPadRemaining(pad);
+      var cIcon = pad.currency === "mana" ? "💎" : "🪙";
+
+      html += '<div class="rpg-card ' + (isBuilt ? 'unlocked' : '') + '">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-      html += '<span style="font-weight:900;font-size:0.9rem;color:' + bp.color + ';">' + bp.icon + ' ' + bp.name + '</span>';
-      html += '<span style="font-size:0.7rem;color:' + (unlocked ? '#4ade80' : '#fde047') + ';font-weight:800;">' + (unlocked ? '✅ 已解鎖' : '🔒 ' + cIcon + bp.unlockCost) + '</span>';
+      html += '<span style="font-weight:800;font-size:0.84rem;color:#f8fafc;">' + (bp ? bp.icon : pad.icon) + ' ' + pad.name + '</span>';
+      html += '<span style="font-size:0.7rem;color:#38bdf8;font-weight:800;">' + (isBuilt ? 'Lv.' + st.level + '/' + pad.maxLevel : '未建造') + '</span>';
       html += '</div>';
-      html += '<div style="font-size:0.73rem;color:#fde047;font-weight:700;">定位：' + bp.roleTag + '</div>';
-      html += '<div style="font-size:0.72rem;color:#cbd5e1;">點擊查看完整【簡介】與部署陣位 ▸</div>';
+
+      if (pad.customizable && isBuilt && bp) {
+        html += '<div style="font-size:0.72rem;color:#fde047;font-weight:700;">駐守：' + bp.icon + ' ' + bp.name + ' (' + bp.roleTag + ')</div>';
+        html += '<div style="font-size:0.68rem;color:#94a3b8;">' + bp.desc + '</div>';
+        html += '<div style="font-size:0.66rem;color:#4ade80;font-weight:800;margin-top:2px;">🔒 類型已鎖定</div>';
+      } else if (pad.customizable && !isBuilt) {
+        html += '<div style="font-size:0.72rem;color:#38bdf8;">🔮 空置陣位 · 踏上即可自選類型建造</div>';
+      } else {
+        html += '<div style="font-size:0.70rem;color:#cbd5e1;">' + pad.desc + '</div>';
+      }
+
+      if (!isMax) {
+        html += '<button class="btn-secondary" style="margin-top:3px;" onclick="window.uiNavigateToPad('' + pad.id + '')">📍 導航踏陣 (' + cIcon + rem + ')</button>';
+      } else {
+        html += '<div style="font-size:0.72rem;color:#4ade80;font-weight:800;margin-top:3px;">✨ 已達最高等級</div>';
+      }
       html += '</div>';
     });
     html += '</div>';
 
-    // Step 3: Dynamic 簡介 Box for the Selected Type or Selected Tower
-    html += '<div class="skill-inspector-card">';
-    if (this.modalIntroMode === "type" && curTypeObj) {
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">';
-      html += '<div style="font-weight:900;font-size:0.96rem;color:' + curTypeObj.color + ';">📖 所選類型簡介：' + curTypeObj.icon + ' ' + curTypeObj.name + '</div>';
-      html += '<span style="font-size:0.75rem;color:#fde047;font-weight:800;">請點擊上方任一建築卡片檢視詳細數據</span>';
+    // 10 Blueprints reference
+    html += '<div style="font-weight:900;color:#38bdf8;font-size:0.86rem;margin-top:8px;">📜 10 大建築藍圖庫 (未解鎖藍圖可在此預覽與解鎖)</div>';
+    html += '<div class="card-grid">';
+    window.GAME_DATA.towerBlueprints.forEach(function(b) {
+      var unl = eng.isBlueprintUnlocked(b.id);
+      var cIc = b.unlockCurrency === "mana" ? "💎" : "🪙";
+      html += '<div class="rpg-card ' + (unl ? 'unlocked' : '') + '">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+      html += '<span style="font-weight:800;font-size:0.82rem;color:' + b.color + ';">' + b.icon + ' ' + b.name + '</span>';
+      html += '<span style="font-size:0.68rem;color:' + (unl ? '#4ade80' : '#fde047') + ';font-weight:800;">' + (unl ? '✅已解鎖' : '🔒' + cIc + b.unlockCost) + '</span>';
       html += '</div>';
-      html += '<div style="font-size:0.8rem;color:#f8fafc;line-height:1.5;">' + curTypeObj.summary + '</div>';
-    } else {
-      var selBp = eng.getBlueprintById(this.modalSelectedBpId);
-      var isUnl = eng.isBlueprintUnlocked(selBp.id);
-      var curIc = selBp.unlockCurrency === "mana" ? "💎" : "🪙";
-
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
-      html += '<div>';
-      html += '<div style="font-weight:900;font-size:1rem;color:' + selBp.color + ';">📖 所選建築詳細簡介：' + selBp.icon + ' ' + selBp.name + ' (' + selBp.engName + ')</div>';
-      html += '<div style="font-size:0.75rem;color:#fde047;font-weight:800;margin-top:2px;">所屬類別：' + curTypeObj.icon + ' ' + curTypeObj.name + ' ｜ 戰術定位：' + selBp.roleTag + ' ｜ ' + selBp.adviceTag + '</div>';
-      html += '</div>';
-      if (!isUnl) {
-        html += '<button class="btn-action" onclick="window.uiUnlockBlueprint(\'' + selBp.id + '\')">🔓 立即解鎖此藍圖 (' + curIc + selBp.unlockCost + ')</button>';
-      } else {
-        html += '<span style="background:rgba(34,197,94,0.2);border:1px solid #4ade80;color:#4ade80;padding:4px 10px;border-radius:8px;font-size:0.75rem;font-weight:800;">✅ 藍圖已解鎖・可隨時駐守</span>';
-      }
-      html += '</div>';
-
-      html += '<div style="font-size:0.8rem;color:#f8fafc;line-height:1.48;background:rgba(15,23,42,0.75);padding:8px 10px;border-radius:8px;border-left:3px solid ' + selBp.color + ';">';
-      html += '<b>【建築簡介】</b>' + selBp.desc + '<br/>';
-      html += '<span style="color:#93c5fd;"><b>【軍師使用時機】</b>' + selBp.adviceWhen + '</span>';
-      html += '</div>';
-
-      // Detailed Stats
-      html += '<div class="intro-stats-row" style="font-size:0.76rem;">';
-      if (selBp.category === "barracks") {
-        html += '<span>🛡️ 基礎兵種生命：<b>' + selBp.troopHp + '</b></span>';
-        html += '<span>⚔️ 基礎兵種攻擊：<b>' + selBp.troopDmg + '</b></span>';
-        html += '<span>⏱️ 出兵間隔：<b>' + selBp.spawnInterval + ' 秒</b></span>';
-        html += '<span>🪙 初始建造費：<b>' + selBp.buildCostGold + ' 金</b></span>';
-      } else {
-        html += '<span>💥 基礎傷害：<b>' + selBp.baseDmg + '</b></span>';
-        html += '<span>⚡ 攻擊間隔：<b>' + selBp.atkRate + ' 秒</b></span>';
-        html += '<span>🎯 攻擊射程：<b>' + selBp.range + '</b></span>';
-        html += '<span>🪙 初始建造費：<b>' + selBp.buildCostGold + ' 金</b></span>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-
-    // Section C: All Map Plots across 4 Zones (Can directly deploy the selected tower onto any unlocked customizable plot!)
-    var selBpForDeploy = eng.getBlueprintById(this.modalSelectedBpId);
-    html += '<div style="font-weight:900;color:#fde047;font-size:0.88rem;margin-top:6px;">③ 全地圖陣位與功能建築總覽（可一鍵將【' + selBpForDeploy.icon + selBpForDeploy.name + '】指派至陣位或導航前往）</div>';
-
-    var zoneNames = [
-      "🏛️ 核心聖殿區 (初始解鎖 — 含大本營、城防與內城陣位)",
-      "⚡ 北境古林防線 (擴建 #1 — 含北道前哨、魔晶井與鐵匠神爐)",
-      "☄️ 中路王道防線 (擴建 #2 — 含中路雙陣位與天罰流星神龕)",
-      "🐉 南境密林防線 (擴建 #3 — 含南路雙陣位與魔王召喚陣)"
-    ];
-
-    for (var z = 0; z < 4; z++) {
-      var isZoneUnl = eng.state.unlockedZones.indexOf(z) !== -1;
-      html += '<div style="margin-top:8px;font-weight:800;color:' + (isZoneUnl ? '#38bdf8' : '#94a3b8') + ';font-size:0.84rem;">' + zoneNames[z] + (isZoneUnl ? ' ✅' : ' 🔒 (需先踏上擴建陣位)') + '</div>';
-      html += '<div class="card-grid">';
-
-      window.GAME_DATA.groundPads.filter(function(p) { return p.zone === z; }).forEach(function(pad) {
-        var st = eng.state.pads[pad.id] || { level: 0, invested: 0 };
-        var rem = eng.getPadRemaining(pad);
-        var cIcon = pad.currency === "mana" ? "💎" : "🪙";
-        var isMax = st.level >= pad.maxLevel;
-        var bp = pad.customizable ? eng.getPadBlueprint(pad) : null;
-
-        html += '<div class="rpg-card ' + (st.level > 0 ? 'unlocked' : '') + '">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-        html += '<span style="font-weight:800;font-size:0.84rem;color:#f8fafc;">' + (bp ? bp.icon : pad.icon) + ' ' + pad.name + '</span>';
-        html += '<span style="font-size:0.72rem;color:#38bdf8;font-weight:700;">' + (pad.type === "expand" ? (st.level > 0 ? "已擴建" : "未擴建") : "Lv." + st.level + "/" + pad.maxLevel) + '</span>';
-        html += '</div>';
-
-        if (pad.customizable && bp) {
-          html += '<div style="font-size:0.73rem;color:#fde047;font-weight:700;">駐守：' + bp.icon + ' ' + bp.name + ' (' + bp.roleTag + ')</div>';
-          html += '<div style="font-size:0.7rem;color:#cbd5e1;">' + bp.desc + '</div>';
-          if (isZoneUnl && bp.id !== selBpForDeploy.id) {
-            html += '<button class="btn-emerald" style="margin-top:2px;" onclick="window.uiChooseTowerOnPad(\'' + pad.id + '\', \'' + selBpForDeploy.id + '\')">🏰 改派【' + selBpForDeploy.name + '】駐守</button>';
-          }
-        } else {
-          html += '<div style="font-size:0.72rem;color:#cbd5e1;min-height:28px;"><b>簡介：</b>' + pad.desc + '</div>';
-        }
-
-        if (isZoneUnl && !isMax) {
-          html += '<button class="btn-secondary" style="margin-top:3px;" onclick="window.uiNavigateToPad(\'' + pad.id + '\')">📍 導航踏陣 (' + cIcon + rem + ')</button>';
-        } else if (isMax) {
-          html += '<div style="font-size:0.73rem;color:#22c55e;font-weight:800;margin-top:3px;">✨ 已達最高等級</div>';
-        }
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-
-    container.innerHTML = html;
-  },
-
-  // ==========================================================================
-  // 2. REDESIGNED 4-TIER HIERARCHICAL SKILL TREE / TECH TREE MODAL
-  //    - 3 Branch Tabs (戰術主宰樹 / 煉金經濟樹 / 要塞神工樹)
-  //    - Visual 4-Tier Tree Diagram with SVG Connector Lines
-  //    - Parent -> Child -> Keystone Prerequisite System & Node 簡介 Inspector
-  // ==========================================================================
-  renderTalentsModal: function(container) {
-    var eng = window.GameEngine;
-    var st = eng.state;
-    var self = this;
-
-    var branches = window.GAME_DATA.talentBranches || [];
-    var curBranchObj = branches.find(function(b) { return b.id === self.activeSkillBranch; }) || branches[0];
-    var branchTalents = window.GAME_DATA.talents.filter(function(t) { return t.branch === self.activeSkillBranch; });
-
-    // Ensure selectedTalentId belongs to current branch
-    var selTal = branchTalents.find(function(t) { return t.id === self.selectedTalentId; });
-    if (!selTal) {
-      selTal = branchTalents[0];
-      this.selectedTalentId = selTal ? selTal.id : "t_hero_dmg";
-    }
-
-    var html = '';
-
-    // Top Resource & Instruction Bar
-    html += '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;background:rgba(30,23,56,0.95);padding:8px 12px;border-radius:12px;border:1.5px solid rgba(168,85,247,0.5);">';
-    html += '<span style="font-weight:900;color:#fde047;font-size:0.86rem;">🔮 可用靈魂結晶：' + Math.floor(st.souls) + '</span>';
-    html += '<span style="font-size:0.73rem;color:#e9d5ff;">💡 樹狀解鎖規則：上階父節點升至 <b>Lv.3</b> 即可向下點亮子節點與終極奧義！</span>';
-    html += '</div>';
-
-    // 1. Branch Selector Tabs
-    html += '<div class="skill-branch-tabs">';
-    branches.forEach(function(b) {
-      var isAct = self.activeSkillBranch === b.id;
-      // Sum total levels invested in this branch
-      var sumLv = 0;
-      window.GAME_DATA.talents.filter(function(t) { return t.branch === b.id; }).forEach(function(t) {
-        sumLv += (st.talents[t.id] || 0);
-      });
-      html += '<button class="skill-branch-btn ' + (isAct ? 'active-branch' : '') + '" onclick="window.uiSelectSkillBranch(\'' + b.id + '\')">';
-      html += '<span>' + b.icon + ' ' + b.name + '</span>';
-      html += '<span style="font-size:0.68rem;color:#38bdf8;">已投入 ' + sumLv + ' 級</span>';
-      html += '</button>';
-    });
-    html += '</div>';
-
-    // Identify the 6 nodes of the current branch by Tier and Column
-    var nRoot = branchTalents.find(function(t) { return t.tier === 1; });
-    var nT2L  = branchTalents.find(function(t) { return t.tier === 2 && t.col === 0; });
-    var nT2R  = branchTalents.find(function(t) { return t.tier === 2 && t.col === 2; });
-    var nT3L  = branchTalents.find(function(t) { return t.tier === 3 && t.col === 0; });
-    var nT3R  = branchTalents.find(function(t) { return t.tier === 3 && t.col === 2; });
-    var nKey  = branchTalents.find(function(t) { return t.tier === 4; });
-
-    var rootLv = nRoot ? (st.talents[nRoot.id] || 0) : 0;
-    var t2LLv  = nT2L ? (st.talents[nT2L.id] || 0) : 0;
-    var t2RLv  = nT2R ? (st.talents[nT2R.id] || 0) : 0;
-    var t3LLv  = nT3L ? (st.talents[nT3L.id] || 0) : 0;
-    var t3RLv  = nT3R ? (st.talents[nT3R.id] || 0) : 0;
-
-    var lineT1toT2 = rootLv >= 3;
-    var lineT2LtoT3L = t2LLv >= 3;
-    var lineT2RtoT3R = t2RLv >= 3;
-    var lineT3LtoKey = t3LLv >= 3;
-    var lineT3RtoKey = t3RLv >= 3;
-
-    // 2. Visual 4-Tier Skill Tree Viewport with SVG Connector Lines
-    html += '<div class="skill-tree-viewport">';
-
-    // SVG Connector Lines (ViewBox 600 x 360)
-    html += '<svg class="skill-tree-svg" viewBox="0 0 600 360" preserveAspectRatio="none">';
-    var strokeAct = curBranchObj ? curBranchObj.color : "#fbbf24";
-    var strokeDim = "rgba(100, 116, 139, 0.45)";
-
-    // Root (300, 42) -> T2 Left (105, 132) & T2 Right (495, 132)
-    html += '<path d="M 300 45 L 300 85 L 105 85 L 105 132" fill="none" stroke="' + (lineT1toT2 ? strokeAct : strokeDim) + '" stroke-width="' + (lineT1toT2 ? '4' : '2.5') + '" ' + (lineT1toT2 ? '' : 'stroke-dasharray="6,5"') + ' />';
-    html += '<path d="M 300 45 L 300 85 L 495 85 L 495 132" fill="none" stroke="' + (lineT1toT2 ? strokeAct : strokeDim) + '" stroke-width="' + (lineT1toT2 ? '4' : '2.5') + '" ' + (lineT1toT2 ? '' : 'stroke-dasharray="6,5"') + ' />';
-
-    // T2 Left (105, 145) -> T3 Left (105, 235)
-    html += '<line x1="105" y1="145" x2="105" y2="235" stroke="' + (lineT2LtoT3L ? strokeAct : strokeDim) + '" stroke-width="' + (lineT2LtoT3L ? '4' : '2.5') + '" ' + (lineT2LtoT3L ? '' : 'stroke-dasharray="6,5"') + ' />';
-
-    // T2 Right (495, 145) -> T3 Right (495, 235)
-    html += '<line x1="495" y1="145" x2="495" y2="235" stroke="' + (lineT2RtoT3R ? strokeAct : strokeDim) + '" stroke-width="' + (lineT2RtoT3R ? '4' : '2.5') + '" ' + (lineT2RtoT3R ? '' : 'stroke-dasharray="6,5"') + ' />';
-
-    // T3 Left (105, 245) -> Keystone (300, 325)
-    html += '<path d="M 105 245 L 105 288 L 300 288 L 300 325" fill="none" stroke="' + (lineT3LtoKey ? strokeAct : strokeDim) + '" stroke-width="' + (lineT3LtoKey ? '4' : '2.5') + '" ' + (lineT3LtoKey ? '' : 'stroke-dasharray="6,5"') + ' />';
-
-    // T3 Right (495, 245) -> Keystone (300, 325)
-    html += '<path d="M 495 245 L 495 288 L 300 288 L 300 325" fill="none" stroke="' + (lineT3RtoKey ? strokeAct : strokeDim) + '" stroke-width="' + (lineT3RtoKey ? '4' : '2.5') + '" ' + (lineT3RtoKey ? '' : 'stroke-dasharray="6,5"') + ' />';
-    html += '</svg>';
-
-    // Helper to render an individual Skill Node card
-    var renderNode = function(tal, isKeystone) {
-      if (!tal) return '<div></div>';
-      var lv = st.talents[tal.id] || 0;
-      var unl = self.isTalentUnlocked(tal);
-      var isSel = self.selectedTalentId === tal.id;
-      var cls = "skill-node" +
-        (isKeystone ? " node-keystone" : "") +
-        (unl ? " node-unlocked" : " node-locked") +
-        (lv > 0 ? " node-active-lv" : "") +
-        (isSel ? " node-selected" : "");
-
-      var statusBadge = "";
+      html += '<div style="font-size:0.70rem;color:#fde047;">' + b.roleTag + ' · ' + b.adviceTag + '</div>';
+      html += '<div style="font-size:0.68rem;color:#cbd5e1;">' + b.desc + '</div>';
       if (!unl) {
-        statusBadge = '<span class="node-lv-pill" style="color:#f87171;border-color:rgba(248,113,113,0.4);">🔒 需前置 Lv.' + (tal.reqLv || 3) + '</span>';
-      } else if (lv >= tal.maxLv) {
-        statusBadge = '<span class="node-lv-pill" style="color:#4ade80;border-color:#4ade80;">✨ MAX (' + lv + '/' + tal.maxLv + ')</span>';
-      } else {
-        statusBadge = '<span class="node-lv-pill">Lv.' + lv + ' / ' + tal.maxLv + '</span>';
-      }
-
-      var out = '<div class="' + cls + '" onclick="window.uiSelectTalentNode(\'' + tal.id + '\')">';
-      out += '<div class="node-tier-tag">' + tal.roleTag + '</div>';
-      out += '<div class="node-icon-circle">' + tal.icon + '</div>';
-      out += '<div class="node-title">' + tal.name + '</div>';
-      out += statusBadge;
-      out += '</div>';
-      return out;
-    };
-
-    // Tier 1 Row (Center Root)
-    html += '<div class="skill-tier-row">';
-    html += '<div></div>';
-    html += renderNode(nRoot, false);
-    html += '<div></div>';
-    html += '</div>';
-
-    // Tier 2 Row (Left & Right Branches)
-    html += '<div class="skill-tier-row">';
-    html += renderNode(nT2L, false);
-    html += '<div style="font-size:0.68rem;color:' + (lineT1toT2 ? '#4ade80' : '#94a3b8') + ';font-weight:800;text-align:center;background:rgba(15,23,42,0.85);padding:3px 8px;border-radius:8px;">' + (lineT1toT2 ? '⚡ 分支已連通' : '🔒 根基 Lv.3 解鎖') + '</div>';
-    html += renderNode(nT2R, false);
-    html += '</div>';
-
-    // Tier 3 Row (Left & Right Specializations)
-    html += '<div class="skill-tier-row">';
-    html += renderNode(nT3L, false);
-    html += '<div style="font-size:0.68rem;color:#cbd5e1;font-weight:800;text-align:center;background:rgba(15,23,42,0.85);padding:3px 8px;border-radius:8px;">第 3 階進階專精</div>';
-    html += renderNode(nT3R, false);
-    html += '</div>';
-
-    // Tier 4 Row (Center Keystone Ultimate)
-    html += '<div class="skill-tier-row">';
-    html += '<div></div>';
-    html += renderNode(nKey, true);
-    html += '<div></div>';
-    html += '</div>';
-
-    html += '</div>'; // End .skill-tree-viewport
-
-    // 3. Selected Skill Node 簡介 & Upgrade Inspector Panel
-    if (selTal) {
-      var sLv = st.talents[selTal.id] || 0;
-      var sMax = sLv >= selTal.maxLv;
-      var sCost = selTal.baseCost + Math.floor(sLv / 4);
-      var prereqInfo = this.getTalentPrerequisiteText(selTal);
-      var canUpgrade = prereqInfo.unlocked && !sMax && st.souls >= sCost;
-
-      var curBonusVal = selTal.unitSuffix === "金" ? (sLv * selTal.effectPerLv) : Math.round(sLv * selTal.effectPerLv * 100);
-      var nextBonusVal = selTal.unitSuffix === "金" ? ((sLv + 1) * selTal.effectPerLv) : Math.round((sLv + 1) * selTal.effectPerLv * 100);
-
-      html += '<div class="skill-inspector-card">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
-      html += '<div>';
-      html += '<div style="font-weight:900;font-size:0.98rem;color:#fde047;">' + selTal.icon + ' 【' + selTal.name + '】 — ' + selTal.roleTag + ' (Lv.' + sLv + '/' + selTal.maxLv + ')</div>';
-      html += '<div style="font-size:0.74rem;color:' + (prereqInfo.unlocked ? '#4ade80' : '#f87171') + ';font-weight:800;margin-top:2px;">' + prereqInfo.text + '</div>';
-      html += '</div>';
-
-      if (sMax) {
-        html += '<button class="btn-action" disabled>✨ 已修煉至滿級 MAX</button>';
-      } else if (!prereqInfo.unlocked) {
-        html += '<button class="btn-action" disabled>🔒 尚未滿足前置條件</button>';
-      } else {
-        html += '<button class="btn-action" ' + (canUpgrade ? '' : 'disabled') + ' onclick="window.uiUpgradeTalent(\'' + selTal.id + '\')">🔮 升級技能 (消耗 🔮' + sCost + ')</button>';
+        html += '<button class="btn-action" style="margin-top:3px;" onclick="window.uiUnlockBlueprint('' + b.id + '')">🔓 解鎖藍圖 (' + cIc + b.unlockCost + ')</button>';
       }
       html += '</div>';
-
-      html += '<div style="font-size:0.79rem;color:#f8fafc;line-height:1.45;background:rgba(15,23,42,0.75);padding:8px 10px;border-radius:8px;border-left:3px solid #38bdf8;">';
-      html += '<b>【技能簡介】</b>' + selTal.desc;
-      html += '</div>';
-
-      html += '<div class="intro-stats-row" style="font-size:0.75rem;">';
-      html += '<span>📊 當前累計加成：<b style="color:#4ade80;">+' + curBonusVal + selTal.unitSuffix + '</b></span>';
-      if (!sMax) {
-        html += '<span>🚀 下一級 (Lv.' + (sLv + 1) + ') 加成：<b style="color:#fde047;">+' + nextBonusVal + selTal.unitSuffix + '</b></span>';
-      }
-      html += '</div>';
-      html += '</div>';
-    }
+    });
+    html += '</div>';
 
     container.innerHTML = html;
   },
 
-  // 3. Town Hall & Citadel Defense Hub Modal
   renderTownHallModal: function(container) {
     var eng = window.GameEngine;
-    var st = eng.state;
     var hall = eng.townHall;
     var wall = eng.wall;
-    var hallLv = (st.pads["pad_TownHall"] && st.pads["pad_TownHall"].level) || 1;
+    var html = '<div style="background:rgba(15,23,42,0.92);border:1.5px solid #fbbf24;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;">';
+    html += '<div style="font-weight:900;font-size:0.95rem;color:#fde047;">🏛️ 守護大本營核心</div>';
 
-    var gateStatusText = wall.hp > 0 ? "🛡️ 堅固守護中 (魔物無法穿過城牆與城門)" : "💥 城門已被擊破！魔物正突入大本營！";
-    var gateStatusColor = wall.hp > 0 ? "#4ade80" : "#ef4444";
+    // Show all halls of current stage (e.g. Outpost + Main Citadel)
+    (eng.halls || []).forEach(function(h) {
+      var pct = Math.round((h.hp / h.maxHp) * 100);
+      html += '<div style="font-size:0.78rem;color:#e2e8f0;">' + (h.isOutpost ? "🛡️ 前哨要塞廳" : "🏛️ 守護大本營") + "：<b>" + Math.ceil(h.hp) + "/" + h.maxHp + "</b></div>";
+      html += '<div class="hp-bar-track" style="height:7px;"><div class="hp-bar-fill hall-fill" style="width:' + pct + '%;"></div></div>';
+    });
 
-    var html = '<div style="background:linear-gradient(135deg,rgba(15,23,42,0.95),rgba(30,41,59,0.92));border:2px solid #fbbf24;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-    html += '<div style="font-weight:900;font-size:1.05rem;color:#fde047;">🏛️ 守護大本營 Lv.' + hallLv + ' (Citadel Core)</div>';
-    html += '<div style="font-size:0.8rem;color:#38bdf8;font-weight:800;">生命值：' + Math.ceil(hall.hp) + ' / ' + hall.maxHp + '</div>';
-    html += '</div>';
+    html += '<div style="font-size:0.78rem;color:#38bdf8;margin-top:4px;">🏰 城防耐久：<b>' + Math.ceil(wall.hp) + "/" + wall.maxHp + '</b></div>';
+    html += '<div class="hp-bar-track" style="height:7px;"><div class="hp-bar-fill wall-fill" style="width:' + Math.round((wall.hp / wall.maxHp) * 100) + '%;"></div></div>';
 
-    html += '<div>';
-    html += '<div style="display:flex;justify-content:space-between;font-size:0.74rem;color:#cbd5e1;margin-bottom:3px;"><span>大本營生命</span><span>' + Math.ceil(hall.hp) + '/' + hall.maxHp + '</span></div>';
-    html += '<div class="hp-bar-track" style="height:10px;"><div class="hp-bar-fill hall-fill" style="width:' + Math.round((hall.hp / hall.maxHp) * 100) + '%;"></div></div>';
-    html += '</div>';
-
-    html += '<div>';
-    html += '<div style="display:flex;justify-content:space-between;font-size:0.74rem;color:#cbd5e1;margin-bottom:3px;"><span>城防城門耐久</span><span>' + Math.ceil(wall.hp) + '/' + wall.maxHp + '</span></div>';
-    html += '<div class="hp-bar-track" style="height:10px;"><div class="hp-bar-fill wall-fill" style="width:' + Math.round((wall.hp / wall.maxHp) * 100) + '%;"></div></div>';
-    html += '</div>';
-
-    html += '<div style="font-size:0.78rem;color:' + gateStatusColor + ';font-weight:800;background:rgba(15,15,30,0.6);padding:6px 10px;border-radius:8px;">' + gateStatusText + '</div>';
-
-    html += '<div style="font-size:0.76rem;color:#cbd5e1;line-height:1.45;">';
-    html += '• <b>主城弩砲防禦</b>：大本營自帶遠古重裝弩砲，每秒向 650 射程內最近魔物射出貫穿重矢。<br/>';
-    html += '• <b>防守規則</b>：只要南北雙城門與實體石牆耐久 > 0，怪物絕無法穿牆入城；城門若被擊破，魔物將長驅直入圍攻大本營！<br/>';
-    html += '• <b>大本營淪陷</b>：若大本營生命歸零，城池宣告陷落，需施展太古轉生或祈禱聖光復原。';
-    html += '</div>';
-
-    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">';
-    html += '<button class="btn-action" onclick="window.uiNavigateToPad(\'pad_TownHall\')">📍 導航前往【大本營】升級</button>';
-    html += '<button class="btn-secondary" onclick="window.uiNavigateToPad(\'pad_WallFortify\')">🧱 導航前往【城防要塞】修復</button>';
+    html += '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">';
+    html += '<button class="btn-action" onclick="window.uiNavigateToPad('pad_TownHall')">📍 導航前往【大本營】</button>';
+    html += '<button class="btn-secondary" onclick="window.uiNavigateToPad('pad_WallFortify')">🧱 導航前往【城防要塞】</button>';
     html += '<button class="btn-emerald" onclick="window.uiCastSkill(1)">🛡️ 施放【聖光壁壘】修補城防</button>';
-    html += '</div>';
-
-    html += '</div>';
+    html += '</div></div>';
     container.innerHTML = html;
   },
 
-  // 4. Defeat / Citadel Breach Recovery Modal
   renderDefeatModal: function(container) {
     var eng = window.GameEngine;
     var pendingSouls = Math.max(2, Math.floor(eng.state.wave * 0.6 * eng.state.realmId));
-
-    var html = '<div style="background:linear-gradient(135deg,rgba(88,28,40,0.95),rgba(32,15,25,0.98));border:2px solid #ef4444;border-radius:14px;padding:16px;text-align:center;display:flex;flex-direction:column;gap:12px;">';
-    html += '<div style="font-size:2.2rem;">💀</div>';
-    html += '<div style="font-weight:900;font-size:1.15rem;color:#fca5a5;">城池淪陷！守護大本營已被魔物攻陷</div>';
-    html += '<div style="font-size:0.78rem;color:#fecdd3;line-height:1.5;">魔物大軍突破南北城門，守護大本營核心已遭摧毀！你可以選擇施展【聖堂守護重振】原地滿血復原並震退全場魔物，或者進行【太古神殿轉生】獲取靈魂結晶永久提升技能樹！</div>';
-
-    html += '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px;">';
-    html += '<button class="btn-action" style="padding:10px 18px;font-size:0.86rem;" onclick="window.uiReviveCitadel()">✨ 聖堂重振：滿血修復大本營與城防</button>';
-    html += '<button class="btn-secondary" style="padding:10px 18px;font-size:0.86rem;" onclick="window.uiTriggerRebirth()">🔥 古神轉生 (+🔮' + pendingSouls + ' 結晶)</button>';
-    html += '</div>';
-
-    html += '</div>';
+    var html = '<div style="background:rgba(88,28,40,0.95);border:2px solid #ef4444;border-radius:12px;padding:14px;text-align:center;display:flex;flex-direction:column;gap:10px;">';
+    html += '<div style="font-size:2rem;">💀</div>';
+    html += '<div style="font-weight:900;font-size:1.05rem;color:#fca5a5;">城池淪陷！守護大本營被攻陷</div>';
+    html += '<div style="font-size:0.76rem;color:#fecdd3;">你可以原地滿血復原並震退全場魔物，或進行古神轉生獲取靈魂結晶強化技能樹！</div>';
+    html += '<div style="display:flex;gap:8px;justify-content:center;margin-top:4px;">';
+    html += '<button class="btn-action" onclick="window.uiReviveCitadel()">✨ 聖堂重振：滿血復原</button>';
+    html += '<button class="btn-secondary" onclick="window.uiTriggerRebirth()">🔥 古神轉生 (+🔮' + pendingSouls + ')</button>';
+    html += '</div></div>';
     container.innerHTML = html;
   },
 
-  // 5. Hero Classes & Equipment Forge Modal
-  renderHeroModal: function(container) {
+renderHeroModal: function(container) {
     var eng = window.GameEngine;
     var st = eng.state;
     var forgeCost = Math.round(120 * Math.pow(1.25, st.heroWeaponForgeLv));
@@ -1373,4 +940,56 @@ window.uiTriggerRebirth = function() {
 window.uiReviveCitadel = function() {
   window.SoundEngine.init();
   window.GameEngine.reviveFromDefeat();
+};
+
+// Step-On Unbuilt Tower Picker Handlers
+window.uiSelectBuildType = function(padId, typeId) {
+  window.SoundEngine.init();
+  window.GameUI.selectedBuildTypeId = typeId;
+  var firstOf = window.GAME_DATA.towerBlueprints.find(function(b) { return b.typeId === typeId; });
+  if (firstOf) {
+    window.GameUI.selectedBuildBpId = firstOf.id;
+  }
+  window.GameUI.updateContextCard();
+};
+
+window.uiSelectBuildTower = function(padId, bpId) {
+  window.SoundEngine.init();
+  var bp = window.GameEngine.getBlueprintById(bpId);
+  if (bp) {
+    window.GameUI.selectedBuildTypeId = bp.typeId;
+    window.GameUI.selectedBuildBpId = bp.id;
+  }
+  window.GameUI.updateContextCard();
+};
+
+window.uiBuildTower = function(padId, bpId) {
+  window.SoundEngine.init();
+  window.GameEngine.buildPadTower(padId, bpId);
+};
+
+// Step-On Unbuilt Tower Picker Handlers
+window.uiSelectBuildType = function(padId, typeId) {
+  window.SoundEngine.init();
+  window.GameUI.selectedBuildTypeId = typeId;
+  var firstOf = window.GAME_DATA.towerBlueprints.find(function(b) { return b.typeId === typeId; });
+  if (firstOf) {
+    window.GameUI.selectedBuildBpId = firstOf.id;
+  }
+  window.GameUI.updateContextCard();
+};
+
+window.uiSelectBuildTower = function(padId, bpId) {
+  window.SoundEngine.init();
+  var bp = window.GameEngine.getBlueprintById(bpId);
+  if (bp) {
+    window.GameUI.selectedBuildTypeId = bp.typeId;
+    window.GameUI.selectedBuildBpId = bp.id;
+  }
+  window.GameUI.updateContextCard();
+};
+
+window.uiBuildTower = function(padId, bpId) {
+  window.SoundEngine.init();
+  window.GameEngine.buildPadTower(padId, bpId);
 };

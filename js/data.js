@@ -1,92 +1,17 @@
 /* ==========================================================================
-   Ancient Arcane Bastion (古域魔陣：守護神殿) v1.5.0 - RPG Data & Definitions
-   - Version 1.5.0
-   - Tower Categories (towerTypes) for Type-First Step-On Selection & Dynamic 簡介
-   - Redesigned 4-Tier Hierarchical Skill Tree (talents) with Parent-Child Prerequisites
-   - Shortened Building & Pad Names (2-4 characters)
-   - Town Hall (大本營) Configuration & Courtyard Placement
-   - Multi-Lane Road System (3 Winding Roads)
+   Ancient Arcane Bastion (古域魔陣：守護神殿) v1.6.0 - RPG Data & Definitions
+   - Stage-Specific Dynamic Maps (realmMapConfigs):
+     * Stage 1: Single Wall & Single Gate (1 Wall, 1 Gate, 1 Keep, 1 Road)
+     * Stage 2: 1 Long Line Canyon Road with 3 Checkpoint Walls & Massive Hordes
+     * Stage 3: 4 Walls & 4 Gates (East, South, West, North - ESWT)
+     * Stage 4: Multiple Halls (Forward Outpost Keep + Main Citadel Keep)
+     * Stage 5: Grand Apex Astral Mega-Fortress
+   - Tower Locking: Once built (Lv >= 1), tower type is locked.
+   - 3 Building Types -> 10 Blueprints -> 4-Tier Skill Tree
    ========================================================================== */
 
 window.GAME_DATA = {
-  version: "1.5.0",
-
-  // 2100x1450 World Map Dimensions & 3 Strategic Roads
-  mapConfig: {
-    width: 2100,
-    height: 1450,
-    townHall: {
-      x: 250,
-      y: 540,
-      name: "大本營",
-      engName: "Citadel Hall",
-      baseHp: 1800,
-      hpPerLevel: 450,
-      radius: 46
-    },
-    roads: [
-      {
-        id: "road_north",
-        name: "北境古道",
-        gateId: "gate_north",
-        waypoints: [
-          { x: 1980, y: 210 },
-          { x: 1620, y: 240 },
-          { x: 1320, y: 340 },
-          { x: 1020, y: 390 },
-          { x: 780, y: 435 }, // North Gate
-          { x: 520, y: 520 },
-          { x: 250, y: 540 }  // Town Hall
-        ]
-      },
-      {
-        id: "road_center",
-        name: "王城中道",
-        gateId: "gate_north",
-        waypoints: [
-          { x: 2020, y: 680 },
-          { x: 1650, y: 650 },
-          { x: 1340, y: 580 },
-          { x: 1040, y: 500 },
-          { x: 780, y: 435 }, // North Gate
-          { x: 520, y: 520 },
-          { x: 250, y: 540 }  // Town Hall
-        ]
-      },
-      {
-        id: "road_south",
-        name: "南境密林",
-        gateId: "gate_south",
-        waypoints: [
-          { x: 1980, y: 1210 },
-          { x: 1580, y: 1160 },
-          { x: 1240, y: 1050 },
-          { x: 920, y: 960 },
-          { x: 565, y: 890 }, // South Gate
-          { x: 460, y: 740 },
-          { x: 250, y: 540 }  // Town Hall
-        ]
-      }
-    ],
-
-    wallSegments: [
-      { id: "wall_ne", type: "wall", x1: 980, y1: 110, x2: 815, y2: 375, isSolid: true, isGate: false, thickness: 46 },
-      { id: "gate_north", type: "gate", x1: 815, y1: 375, x2: 745, y2: 495, isGate: true, isSolid: false, name: "北城門", thickness: 52 },
-      { id: "wall_mid", type: "wall", x1: 745, y1: 495, x2: 600, y2: 825, isSolid: true, isGate: false, thickness: 48 },
-      { id: "gate_south", type: "gate", x1: 600, y1: 825, x2: 530, y2: 955, isGate: true, isSolid: false, name: "南城門", thickness: 52 },
-      { id: "wall_sw", type: "wall", x1: 530, y1: 955, x2: 350, y2: 1340, isSolid: true, isGate: false, thickness: 46 }
-    ],
-
-    bastionTurrets: [
-      { x: 980, y: 110, name: "東北角樓" },
-      { x: 815, y: 375, name: "北門左塔" },
-      { x: 745, y: 495, name: "北門右塔" },
-      { x: 672, y: 660, name: "中央主堡" },
-      { x: 600, y: 825, name: "南門左塔" },
-      { x: 530, y: 955, name: "南門右塔" },
-      { x: 350, y: 1340, name: "西南角樓" }
-    ]
-  },
+  version: "1.6.0",
 
   // 3 Strategic Building / Tower Categories for Type-First Selection
   towerTypes: [
@@ -97,7 +22,7 @@ window.GAME_DATA = {
       icon: "⚡",
       color: "#38bdf8",
       roleDesc: "法術控場與範圍元素打擊",
-      summary: "【元素魔塔系】專精於冰霜減速、連鎖雷電麻痺與持續熔岩火海。適合建造於城門前與道路彎道，能大幅延緩魔物推進並高效清理群怪。"
+      summary: "【元素魔塔系】專精於冰霜減速、連鎖雷電麻痺與持續熔岩火海。適合建造於城門口與轉角，能大幅延緩魔物推進並高效清理群怪。"
     },
     {
       id: "type_siege",
@@ -119,7 +44,7 @@ window.GAME_DATA = {
     }
   ],
 
-  // 10 Unlockable Player-Choice Blueprints (Grouped by typeId, with rich 簡介 fields)
+  // 10 Unlockable Player-Choice Blueprints
   towerBlueprints: [
     {
       id: "bp_arcane_spire",
@@ -135,8 +60,6 @@ window.GAME_DATA = {
       unlockedByDefault: true,
       unlockCost: 0,
       unlockCurrency: "gold",
-      unlockCostGold: 0,
-      unlockCostMana: 0,
       buildCostGold: 35,
       upgradeScale: 1.36,
       baseDmg: 26,
@@ -147,7 +70,7 @@ window.GAME_DATA = {
       roleTag: "追蹤減速",
       adviceTag: "三連發冰晶・減速 55%",
       adviceWhen: "高速狼群或大量小怪時，奧術塔連發減速最有效。",
-      desc: "齊射 3 枚奧術追蹤冰晶，命中後使魔物移動速度降低 55%（持續 2.8 秒），是守城必備的控場基石。"
+      desc: "齊射 3 枚奧術追蹤冰晶，命中後使魔物移動速度降低 55%（持續 2.8 秒），控場主力基石。"
     },
     {
       id: "bp_knight_statue",
@@ -163,8 +86,6 @@ window.GAME_DATA = {
       unlockedByDefault: true,
       unlockCost: 0,
       unlockCurrency: "gold",
-      unlockCostGold: 0,
-      unlockCostMana: 0,
       buildCostGold: 40,
       upgradeScale: 1.38,
       baseDmg: 38,
@@ -175,7 +96,7 @@ window.GAME_DATA = {
       roleTag: "連鎖麻痺",
       adviceTag: "連鎖閃電・群體暈眩",
       adviceWhen: "成群骷髏與重甲獸人時，連鎖閃電可彈跳麻痺多名敵軍。",
-      desc: "引導九天雷霆劈向敵群，閃電會在周圍 3 名魔物間彈跳並造成 0.45 秒麻痺暈眩，群體控場極強。"
+      desc: "引導九天雷霆劈向敵群，閃電在周圍 3 名魔物間彈跳並造成 0.45 秒麻痺暈眩。"
     },
     {
       id: "bp_flame_mage",
@@ -191,8 +112,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 120,
       unlockCurrency: "gold",
-      unlockCostGold: 120,
-      unlockCostMana: 0,
       buildCostGold: 55,
       upgradeScale: 1.38,
       baseDmg: 46,
@@ -203,7 +122,7 @@ window.GAME_DATA = {
       roleTag: "持續火海",
       adviceTag: "範圍火球・地面熔岩灼燒",
       adviceWhen: "敵群聚集在城門或狹道時，火海能迅速融化敵潮。",
-      desc: "發射高爆烈焰火球，命中處形成持續 3.2 秒的熔岩火海，對踏入其中的所有敵軍造成高頻灼燒傷害。"
+      desc: "發射高爆烈焰火球，命中處形成持續 3.2 秒的熔岩火海，造成高頻範圍灼燒。"
     },
     {
       id: "bp_guard_barracks",
@@ -219,8 +138,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 150,
       unlockCurrency: "gold",
-      unlockCostGold: 150,
-      unlockCostMana: 0,
       buildCostGold: 65,
       upgradeScale: 1.36,
       baseDmg: 30,
@@ -233,7 +150,7 @@ window.GAME_DATA = {
       roleTag: "持盾攔截",
       adviceTag: "召喚持盾步兵・正面阻擋",
       adviceWhen: "建在道路旁可直接派兵出城迎戰，阻擋怪物靠近城牆！",
-      desc: "定期派遣持盾聖堂鐵衛走上古道，主動攔截並卡住魔物前進，為後排魔塔爭取寶貴的輸出時間。"
+      desc: "定期派遣持盾聖堂鐵衛沿道前進，正面卡位阻截魔物，為後排爭取輸出時間。"
     },
     {
       id: "bp_archer_lodge",
@@ -249,8 +166,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 240,
       unlockCurrency: "gold",
-      unlockCostGold: 240,
-      unlockCostMana: 0,
       buildCostGold: 85,
       upgradeScale: 1.38,
       baseDmg: 35,
@@ -263,7 +178,7 @@ window.GAME_DATA = {
       roleTag: "遠程齊射",
       adviceTag: "召喚精靈遊俠・三連飛輪箭",
       adviceWhen: "對付後排術士與高速怪，精靈射手能遠程風箏牽制。",
-      desc: "招募精靈神射手出城駐防，在安全距離外向魔物連續齊射 3 枚穿透飛輪箭，火力密集且靈活。"
+      desc: "招募精靈射手出城巡邏，向魔物連續齊射 3 枚穿透飛輪箭，火力密集。"
     },
     {
       id: "bp_blade_altar",
@@ -279,8 +194,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 380,
       unlockCurrency: "gold",
-      unlockCostGold: 380,
-      unlockCostMana: 0,
       buildCostGold: 110,
       upgradeScale: 1.40,
       baseDmg: 68,
@@ -291,7 +204,7 @@ window.GAME_DATA = {
       roleTag: "直線貫穿",
       adviceTag: "超遠程劍氣・直線貫穿 4 敵",
       adviceWhen: "建在筆直道路旁，劍氣能一舉貫穿整排前進的怪物。",
-      desc: "凝聚古域劍意斬出超遠程次元劍氣，直線貫穿路徑上最多 4 名敵人，專剋長驅直入的整排敵軍與後排術士。"
+      desc: "凝聚古域劍意斬出超遠程次元劍氣，直線貫穿路徑上最多 4 名敵人。"
     },
     {
       id: "bp_star_cannon",
@@ -307,8 +220,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 580,
       unlockCurrency: "gold",
-      unlockCostGold: 580,
-      unlockCostMana: 0,
       buildCostGold: 160,
       upgradeScale: 1.42,
       baseDmg: 135,
@@ -319,7 +230,7 @@ window.GAME_DATA = {
       roleTag: "重型破甲",
       adviceTag: "超高單體重砲・破甲貫穿",
       adviceWhen: "Boss 波與石巨像來襲時必備！超高單體重砲破甲打擊。",
-      desc: "全場最遠射程（740）的重型星辰破甲巨砲，單發傷害極高並具備強大穿透力，是斬殺石巨像與領域首領的王牌。"
+      desc: "超遠射程（740）的重型星辰破甲巨砲，單發傷害極高，專殺石巨像與首領。"
     },
     {
       id: "bp_cavalry_stable",
@@ -335,8 +246,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 65,
       unlockCurrency: "mana",
-      unlockCostGold: 850,
-      unlockCostMana: 65,
       buildCostGold: 220,
       upgradeScale: 1.40,
       baseDmg: 75,
@@ -349,7 +258,7 @@ window.GAME_DATA = {
       roleTag: "衝鋒撿幣",
       adviceTag: "召喚重裝聖騎・衝鋒兼撿金幣",
       adviceWhen: "聖騎士血量極厚且能自動拾取外圍道路掉落的金幣寶箱。",
-      desc: "訓練騎乘白馬的烈陽聖騎士出城高速衝鋒，不僅擁有極高血量抗線，更會自動拾取沿途掉落的所有金幣、魔晶與寶箱！"
+      desc: "訓練白馬烈陽聖騎士出城高速衝鋒抗線，並自動拾取沿途掉落的金幣與魔晶！"
     },
     {
       id: "bp_void_obelisk",
@@ -365,8 +274,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 90,
       unlockCurrency: "mana",
-      unlockCostGold: 1200,
-      unlockCostMana: 90,
       buildCostGold: 290,
       upgradeScale: 1.42,
       baseDmg: 98,
@@ -377,7 +284,7 @@ window.GAME_DATA = {
       roleTag: "聚怪真實傷",
       adviceTag: "引力黑洞聚怪・附帶 3% 最大生命傷",
       adviceWhen: "怪物數量極多或高血量炎魔來襲時，黑洞可強制聚怪並削血。",
-      desc: "撕裂空間釋放引力黑洞，將周圍 140 範圍內的魔物強制拉扯聚攏，並造成基礎傷害外加目標最大生命值 3% 的真實傷害！"
+      desc: "撕裂空間釋放引力黑洞，聚攏 140 範圍敵軍並造成目標最大生命 3% 真實傷害！"
     },
     {
       id: "bp_dragon_golem_foundry",
@@ -393,8 +300,6 @@ window.GAME_DATA = {
       unlockedByDefault: false,
       unlockCost: 140,
       unlockCurrency: "mana",
-      unlockCostGold: 1800,
-      unlockCostMana: 140,
       buildCostGold: 420,
       upgradeScale: 1.45,
       baseDmg: 185,
@@ -407,17 +312,309 @@ window.GAME_DATA = {
       roleTag: "龍息魔像",
       adviceTag: "召喚泰坦巨像・普攻暈眩重擊",
       adviceWhen: "終極鎮殿兵營！定期召喚超高血量的泰坦魔像正面碾壓敵軍。",
-      desc: "古域終極戰爭神殿！定期召喚擁有 750+ 基礎生命與範圍重擊暈眩能力的【符文泰坦魔像】，在道路上一夫當關！"
+      desc: "古域終極神殿！定期召喚 750+ 基礎生命且附帶重擊暈眩的符文泰坦巨像！"
     }
   ],
 
-  // 5 Ancient Realms
+  // 5 Strategic Realm Map Configurations (Different Stage = Different Map!)
+  realmMapConfigs: {
+    // ------------------------------------------------------------------------
+    // STAGE 1: 古林單門要塞 (Single Gate, Single Wall, 1 Road, 1 Keep)
+    // ------------------------------------------------------------------------
+    1: {
+      width: 2400,
+      height: 1500,
+      layoutType: "single_wall_single_gate",
+      halls: [
+        { id: "hall_main", name: "守護大本營", x: 280, y: 750, baseHp: 1800, hpPerLevel: 450, radius: 46, isMain: true }
+      ],
+      wallSegments: [
+        { id: "wall_n", type: "wall", x1: 950, y1: 100, x2: 950, y2: 660, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_east", type: "gate", x1: 950, y1: 660, x2: 950, y2: 840, isGate: true, isSolid: false, name: "東城門", thickness: 52 },
+        { id: "wall_s", type: "wall", x1: 950, y1: 840, x2: 950, y2: 1400, isSolid: true, isGate: false, thickness: 46 }
+      ],
+      bastionTurrets: [
+        { x: 950, y: 100, name: "北角樓" },
+        { x: 950, y: 660, name: "東門左塔" },
+        { x: 950, y: 840, name: "東門右塔" },
+        { x: 950, y: 1400, name: "南角樓" }
+      ],
+      roads: [
+        {
+          id: "road_main",
+          name: "古林大道",
+          gateId: "gate_east",
+          waypoints: [
+            { x: 2300, y: 750 },
+            { x: 1950, y: 720 },
+            { x: 1600, y: 800 },
+            { x: 1250, y: 750 },
+            { x: 950, y: 750 }, // Gate
+            { x: 620, y: 750 },
+            { x: 280, y: 750 }  // Town Hall
+          ]
+        }
+      ],
+      groundPads: [
+        { id: "pad_TownHall", zone: 0, type: "town_hall", name: "大本營", icon: "🏛️", x: 280, y: 750, currency: "gold", baseCost: 50, costScale: 1.35, maxLevel: 50, desc: "守護大本營核心！升級提升生命並發射自衛弩砲。" },
+        { id: "pad_GoldMine", zone: 0, type: "mine", name: "金庫", icon: "🪙", x: 280, y: 520, currency: "gold", baseCost: 40, costScale: 1.35, maxLevel: 50, desc: "地下黃金礦脈，每秒產金並派小精靈撿幣。" },
+        { id: "pad_WallFortify", zone: 0, type: "wall", name: "城防", icon: "🧱", x: 600, y: 750, currency: "gold", baseCost: 35, costScale: 1.35, maxLevel: 50, desc: "強化城牆與東城門耐久，立即修復 50% 城防。" },
+        { id: "pad_ManaWell", zone: 0, type: "mana_well", name: "魔晶井", icon: "💎", x: 420, y: 350, currency: "gold", baseCost: 75, costScale: 1.38, maxLevel: 40, desc: "產出魔力水晶 💎，縮短技能冷卻。" },
+        { id: "pad_Runeforge", zone: 0, type: "forge", name: "神爐", icon: "⚒️", x: 320, y: 1050, currency: "gold", baseCost: 80, costScale: 1.32, maxLevel: 99, desc: "鍛造聖物裝備寶箱，強化武器等級。" },
+        { id: "pad_GateInner", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_arcane_spire", name: "門內陣位", icon: "🏰", x: 780, y: 640, towerX: 820, towerY: 580, currency: "gold", baseCost: 30, costScale: 1.36, maxLevel: 60, desc: "東城門內側防守陣位，可自選魔塔或兵營。" },
+        { id: "pad_GateSouthInner", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_knight_statue", name: "內城南陣", icon: "🗿", x: 780, y: 860, towerX: 820, towerY: 920, currency: "gold", baseCost: 35, costScale: 1.38, maxLevel: 60, desc: "城門南側陣位，火力覆蓋城門入口。" },
+        { id: "pad_ExpandEast", zone: 0, type: "expand", unlocksZone: 1, name: "擴建城外", icon: "🔒", x: 1100, y: 750, currency: "gold", baseCost: 95, costScale: 1.0, maxLevel: 1, desc: "解鎖城外古林古道建地與天罰神龕。" },
+        { id: "pad_GateFront", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_guard_barracks", name: "門前哨站", icon: "🛡️", x: 1220, y: 650, towerX: 1220, towerY: 600, currency: "gold", baseCost: 65, costScale: 1.38, maxLevel: 60, desc: "城門前咽喉陣位，極力推薦建造派兵兵營堵門！" },
+        { id: "pad_RoadMid", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_flame_mage", name: "古道中陣", icon: "🔥", x: 1550, y: 880, towerX: 1550, towerY: 830, currency: "gold", baseCost: 85, costScale: 1.38, maxLevel: 60, desc: "道路中段開闊陣位，適合範圍火海輸出。" },
+        { id: "pad_Shrine", zone: 1, type: "shrine", name: "天罰神龕", icon: "🌋", x: 1650, y: 480, currency: "mana", baseCost: 20, costScale: 1.15, maxLevel: 99, desc: "注入魔晶引爆全屏流星天罰火雨。" },
+        { id: "pad_BossPortal", zone: 1, type: "portal", name: "魔王召喚", icon: "⛩️", x: 2050, y: 550, currency: "mana", baseCost: 35, costScale: 1.25, maxLevel: 99, desc: "召喚領域首領，擊敗必掉靈魂與神裝。" }
+      ]
+    },
+
+    // ------------------------------------------------------------------------
+    // STAGE 2: 荒漠長道峽谷 (1 Long Road with 3 Checkpoint Walls, Monster Swarms)
+    // ------------------------------------------------------------------------
+    2: {
+      width: 3200,
+      height: 1300,
+      layoutType: "long_line_three_checkpoints",
+      halls: [
+        { id: "hall_main", name: "守護大本營", x: 260, y: 650, baseHp: 3200, hpPerLevel: 600, radius: 46, isMain: true }
+      ],
+      wallSegments: [
+        // Checkpoint 1 (Outer Redoubt) at x = 2350
+        { id: "cp1_wall_n", type: "wall", x1: 2350, y1: 100, x2: 2350, y2: 560, isSolid: true, isGate: false, thickness: 46, cpIndex: 1 },
+        { id: "cp1_gate", type: "gate", x1: 2350, y1: 560, x2: 2350, y2: 740, isGate: true, isSolid: false, name: "第一道前哨關卡", thickness: 52, cpIndex: 1 },
+        { id: "cp1_wall_s", type: "wall", x1: 2350, y1: 740, x2: 2350, y2: 1200, isSolid: true, isGate: false, thickness: 46, cpIndex: 1 },
+
+        // Checkpoint 2 (Mid Fortress) at x = 1500
+        { id: "cp2_wall_n", type: "wall", x1: 1500, y1: 100, x2: 1500, y2: 560, isSolid: true, isGate: false, thickness: 46, cpIndex: 2 },
+        { id: "cp2_gate", type: "gate", x1: 1500, y1: 560, x2: 1500, y2: 740, isGate: true, isSolid: false, name: "第二道要塞關卡", thickness: 52, cpIndex: 2 },
+        { id: "cp2_wall_s", type: "wall", x1: 1500, y1: 740, x2: 1500, y2: 1200, isSolid: true, isGate: false, thickness: 46, cpIndex: 2 },
+
+        // Checkpoint 3 (Inner Keep Gate) at x = 750
+        { id: "cp3_wall_n", type: "wall", x1: 750, y1: 100, x2: 750, y2: 560, isSolid: true, isGate: false, thickness: 46, cpIndex: 3 },
+        { id: "cp3_gate", type: "gate", x1: 750, y1: 560, x2: 750, y2: 740, isGate: true, isSolid: false, name: "第三道王城關卡", thickness: 52, cpIndex: 3 },
+        { id: "cp3_wall_s", type: "wall", x1: 750, y1: 740, x2: 750, y2: 1200, isSolid: true, isGate: false, thickness: 46, cpIndex: 3 }
+      ],
+      bastionTurrets: [
+        { x: 2350, y: 560, name: "前哨左塔" }, { x: 2350, y: 740, name: "前哨右塔" },
+        { x: 1500, y: 560, name: "中軍左塔" }, { x: 1500, y: 740, name: "中軍右塔" },
+        { x: 750, y: 560, name: "內閘左塔" }, { x: 750, y: 740, name: "內閘右塔" }
+      ],
+      roads: [
+        {
+          id: "road_long",
+          name: "長道峽谷",
+          waypoints: [
+            { x: 3100, y: 650 },
+            { x: 2750, y: 650 },
+            { x: 2350, y: 650 }, // Checkpoint 1
+            { x: 1950, y: 650 },
+            { x: 1500, y: 650 }, // Checkpoint 2
+            { x: 1100, y: 650 },
+            { x: 750, y: 650 },  // Checkpoint 3
+            { x: 450, y: 650 },
+            { x: 260, y: 650 }   // Town Hall
+          ]
+        }
+      ],
+      groundPads: [
+        { id: "pad_TownHall", zone: 0, type: "town_hall", name: "大本營", icon: "🏛️", x: 260, y: 650, currency: "gold", baseCost: 65, costScale: 1.35, maxLevel: 50, desc: "大本營核心！" },
+        { id: "pad_GoldMine", zone: 0, type: "mine", name: "金庫", icon: "🪙", x: 260, y: 440, currency: "gold", baseCost: 50, costScale: 1.35, maxLevel: 50, desc: "地下產金。" },
+        { id: "pad_WallFortify", zone: 0, type: "wall", name: "城防", icon: "🧱", x: 520, y: 650, currency: "gold", baseCost: 45, costScale: 1.35, maxLevel: 50, desc: "強化三大關卡防禦！" },
+        { id: "pad_CP3_Top", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_star_cannon", name: "內閘北陣", icon: "☄️", x: 620, y: 520, towerX: 620, towerY: 470, currency: "gold", baseCost: 45, costScale: 1.38, maxLevel: 60, desc: "第三關卡內側重砲陣位。" },
+        { id: "pad_CP3_Bot", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_arcane_spire", name: "內閘南陣", icon: "🏰", x: 620, y: 780, towerX: 620, towerY: 830, currency: "gold", baseCost: 45, costScale: 1.38, maxLevel: 60, desc: "第三關卡內側冰霜陣位。" },
+        { id: "pad_ExpandCP2", zone: 0, type: "expand", unlocksZone: 1, name: "解鎖中軍", icon: "🔒", x: 920, y: 650, currency: "gold", baseCost: 150, costScale: 1.0, maxLevel: 1, desc: "解鎖第二道要塞關卡建地。" },
+        { id: "pad_CP2_Top", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_blade_altar", name: "中軍北陣", icon: "⚡", x: 1350, y: 520, towerX: 1350, towerY: 470, currency: "gold", baseCost: 90, costScale: 1.38, maxLevel: 60, desc: "第二關卡前線貫穿陣位。" },
+        { id: "pad_CP2_Bot", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_guard_barracks", name: "中軍兵營", icon: "🛡️", x: 1350, y: 780, towerX: 1350, towerY: 830, currency: "gold", baseCost: 95, costScale: 1.38, maxLevel: 60, desc: "第二關卡派兵陣位。" },
+        { id: "pad_ExpandCP1", zone: 1, type: "expand", unlocksZone: 2, name: "解鎖前哨", icon: "🔒", x: 1750, y: 650, currency: "gold", baseCost: 350, costScale: 1.0, maxLevel: 1, desc: "解鎖第一道前哨關卡建地。" },
+        { id: "pad_CP1_Top", zone: 2, type: "tower", customizable: true, defaultBlueprint: "bp_flame_mage", name: "前哨北陣", icon: "🔥", x: 2200, y: 520, towerX: 2200, towerY: 470, currency: "gold", baseCost: 140, costScale: 1.38, maxLevel: 60, desc: "第一道關卡迎敵火海。" },
+        { id: "pad_CP1_Bot", zone: 2, type: "tower", customizable: true, defaultBlueprint: "bp_cavalry_stable", name: "前哨聖騎", icon: "🏇", x: 2200, y: 780, towerX: 2200, towerY: 830, currency: "gold", baseCost: 160, costScale: 1.38, maxLevel: 60, desc: "第一道關卡騎兵衝鋒。" },
+        { id: "pad_Shrine", zone: 2, type: "shrine", name: "天罰神龕", icon: "🌋", x: 2550, y: 450, currency: "mana", baseCost: 30, costScale: 1.15, maxLevel: 99, desc: "流星天罰火雨。" }
+      ]
+    },
+
+    // ------------------------------------------------------------------------
+    // STAGE 3: 幽暗十字要塞 (4 Walls & 4 Gates: ESWT / ESWN)
+    // ------------------------------------------------------------------------
+    3: {
+      width: 2400,
+      height: 2400,
+      layoutType: "four_walls_four_gates",
+      halls: [
+        { id: "hall_main", name: "守護大本營", x: 1200, y: 1200, baseHp: 5500, hpPerLevel: 900, radius: 50, isMain: true }
+      ],
+      wallSegments: [
+        // North Wall & Gate (at y = 750)
+        { id: "w_n_l", type: "wall", x1: 750, y1: 750, x2: 1110, y2: 750, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_north", type: "gate", x1: 1110, y1: 750, x2: 1290, y2: 750, isGate: true, isSolid: false, name: "北城門", thickness: 52 },
+        { id: "w_n_r", type: "wall", x1: 1290, y1: 750, x2: 1650, y2: 750, isSolid: true, isGate: false, thickness: 46 },
+
+        // East Wall & Gate (at x = 1650)
+        { id: "w_e_t", type: "wall", x1: 1650, y1: 750, x2: 1650, y2: 1110, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_east", type: "gate", x1: 1650, y1: 1110, x2: 1650, y2: 1290, isGate: true, isSolid: false, name: "東城門", thickness: 52 },
+        { id: "w_e_b", type: "wall", x1: 1650, y1: 1290, x2: 1650, y2: 1650, isSolid: true, isGate: false, thickness: 46 },
+
+        // South Wall & Gate (at y = 1650)
+        { id: "w_s_r", type: "wall", x1: 1650, y1: 1650, x2: 1290, y2: 1650, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_south", type: "gate", x1: 1290, y1: 1650, x2: 1110, y2: 1650, isGate: true, isSolid: false, name: "南城門", thickness: 52 },
+        { id: "w_s_l", type: "wall", x1: 1110, y1: 1650, x2: 750, y2: 1650, isSolid: true, isGate: false, thickness: 46 },
+
+        // West Wall & Gate (at x = 750)
+        { id: "w_w_b", type: "wall", x1: 750, y1: 1650, x2: 750, y2: 1290, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_west", type: "gate", x1: 750, y1: 1290, x2: 750, y2: 1110, isGate: true, isSolid: false, name: "西城門", thickness: 52 },
+        { id: "w_w_t", type: "wall", x1: 750, y1: 1110, x2: 750, y2: 750, isSolid: true, isGate: false, thickness: 46 }
+      ],
+      bastionTurrets: [
+        { x: 750, y: 750, name: "西北角樓" }, { x: 1650, y: 750, name: "東北角樓" },
+        { x: 1650, y: 1650, name: "東南角樓" }, { x: 750, y: 1650, name: "西南角樓" }
+      ],
+      roads: [
+        { id: "road_north", name: "北道", gateId: "gate_north", waypoints: [{ x: 1200, y: 150 }, { x: 1200, y: 750 }, { x: 1200, y: 1200 }] },
+        { id: "road_east", name: "東道", gateId: "gate_east", waypoints: [{ x: 2250, y: 1200 }, { x: 1650, y: 1200 }, { x: 1200, y: 1200 }] },
+        { id: "road_south", name: "南道", gateId: "gate_south", waypoints: [{ x: 1200, y: 2250 }, { x: 1200, y: 1650 }, { x: 1200, y: 1200 }] },
+        { id: "road_west", name: "西道", gateId: "gate_west", waypoints: [{ x: 150, y: 1200 }, { x: 750, y: 1200 }, { x: 1200, y: 1200 }] }
+      ],
+      groundPads: [
+        { id: "pad_TownHall", zone: 0, type: "town_hall", name: "大本營", icon: "🏛️", x: 1200, y: 1200, currency: "gold", baseCost: 80, costScale: 1.35, maxLevel: 50, desc: "中心神殿要塞！" },
+        { id: "pad_WallFortify", zone: 0, type: "wall", name: "四方城防", icon: "🧱", x: 1200, y: 1350, currency: "gold", baseCost: 60, costScale: 1.35, maxLevel: 50, desc: "強化四面城牆與四座城門耐久。" },
+        { id: "pad_GoldMine", zone: 0, type: "mine", name: "金庫", icon: "🪙", x: 1050, y: 1050, currency: "gold", baseCost: 60, costScale: 1.35, maxLevel: 50, desc: "四方要塞產金金庫。" },
+        { id: "pad_ManaWell", zone: 0, type: "mana_well", name: "魔晶井", icon: "💎", x: 1350, y: 1050, currency: "gold", baseCost: 110, costScale: 1.38, maxLevel: 40, desc: "魔力水晶採集井。" },
+        { id: "pad_GateN", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_arcane_spire", name: "北門陣位", icon: "🏰", x: 1200, y: 880, towerX: 1200, towerY: 830, currency: "gold", baseCost: 55, costScale: 1.38, maxLevel: 60, desc: "守護北城門的陣位。" },
+        { id: "pad_GateE", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_knight_statue", name: "東門陣位", icon: "🗿", x: 1520, y: 1200, towerX: 1570, towerY: 1200, currency: "gold", baseCost: 55, costScale: 1.38, maxLevel: 60, desc: "守護東城門的陣位。" },
+        { id: "pad_GateS", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_flame_mage", name: "南門陣位", icon: "🔥", x: 1200, y: 1520, towerX: 1200, towerY: 1570, currency: "gold", baseCost: 55, costScale: 1.38, maxLevel: 60, desc: "守護南城門的陣位。" },
+        { id: "pad_GateW", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_blade_altar", name: "西門陣位", icon: "⚡", x: 880, y: 1200, towerX: 830, towerY: 1200, currency: "gold", baseCost: 55, costScale: 1.38, maxLevel: 60, desc: "守護西城門的陣位。" },
+        { id: "pad_ExpandOuter", zone: 0, type: "expand", unlocksZone: 1, name: "解鎖四方外圍", icon: "🔒", x: 1200, y: 620, currency: "gold", baseCost: 450, costScale: 1.0, maxLevel: 1, desc: "解鎖城外四面外哨陣位與神龕。" },
+        { id: "pad_OutN", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_guard_barracks", name: "北道外哨", icon: "🛡️", x: 1200, y: 450, towerX: 1200, towerY: 400, currency: "gold", baseCost: 150, costScale: 1.38, maxLevel: 60, desc: "北路外哨兵營。" },
+        { id: "pad_OutE", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_star_cannon", name: "東道外哨", icon: "☄️", x: 1950, y: 1200, towerX: 2000, towerY: 1200, currency: "gold", baseCost: 160, costScale: 1.38, maxLevel: 60, desc: "東路外哨重砲。" },
+        { id: "pad_Shrine", zone: 1, type: "shrine", name: "天罰神龕", icon: "🌋", x: 1950, y: 450, currency: "mana", baseCost: 35, costScale: 1.15, maxLevel: 99, desc: "全圖天罰流星火雨。" }
+      ]
+    },
+
+    // ------------------------------------------------------------------------
+    // STAGE 4: 冰封雙子王城 (Multiple Halls: Outpost + Main Citadel Keep)
+    // ------------------------------------------------------------------------
+    4: {
+      width: 2800,
+      height: 1600,
+      layoutType: "multiple_halls_outpost",
+      halls: [
+        { id: "hall_main", name: "守護大本營", x: 300, y: 800, baseHp: 8000, hpPerLevel: 1200, radius: 46, isMain: true },
+        { id: "hall_outpost", name: "前哨要塞廳", x: 1500, y: 800, baseHp: 4500, hpPerLevel: 800, radius: 42, isOutpost: true }
+      ],
+      wallSegments: [
+        // Outer Wall protecting Outpost (at x = 2050)
+        { id: "w_out_n", type: "wall", x1: 2050, y1: 150, x2: 2050, y2: 710, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_outpost", type: "gate", x1: 2050, y1: 710, x2: 2050, y2: 890, isGate: true, isSolid: false, name: "前哨要塞門", thickness: 52 },
+        { id: "w_out_s", type: "wall", x1: 2050, y1: 890, x2: 2050, y2: 1450, isSolid: true, isGate: false, thickness: 46 },
+
+        // Inner Wall protecting Main Citadel (at x = 900)
+        { id: "w_inn_n", type: "wall", x1: 900, y1: 150, x2: 900, y2: 710, isSolid: true, isGate: false, thickness: 46 },
+        { id: "gate_inner", type: "gate", x1: 900, y1: 710, x2: 900, y2: 890, isGate: true, isSolid: false, name: "王城主內門", thickness: 52 },
+        { id: "w_inn_s", type: "wall", x1: 900, y1: 890, x2: 900, y2: 1450, isSolid: true, isGate: false, thickness: 46 }
+      ],
+      bastionTurrets: [
+        { x: 2050, y: 710, name: "前哨左塔" }, { x: 2050, y: 890, name: "前哨右塔" },
+        { x: 900, y: 710, name: "王城左塔" }, { x: 900, y: 890, name: "王城右塔" }
+      ],
+      roads: [
+        {
+          id: "road_twin",
+          name: "雙子要塞大道",
+          waypoints: [
+            { x: 2700, y: 800 },
+            { x: 2350, y: 800 },
+            { x: 2050, y: 800 }, // Outpost Gate
+            { x: 1750, y: 800 },
+            { x: 1500, y: 800 }, // Forward Outpost Hall!
+            { x: 1200, y: 800 },
+            { x: 900, y: 800 },  // Inner Gate
+            { x: 600, y: 800 },
+            { x: 300, y: 800 }   // Main Citadel Keep!
+          ]
+        }
+      ],
+      groundPads: [
+        { id: "pad_TownHall", zone: 0, type: "town_hall", name: "大本營", icon: "🏛️", x: 300, y: 800, currency: "gold", baseCost: 110, costScale: 1.35, maxLevel: 50, desc: "終極主城核心！" },
+        { id: "pad_GoldMine", zone: 0, type: "mine", name: "金庫", icon: "🪙", x: 300, y: 580, currency: "gold", baseCost: 80, costScale: 1.35, maxLevel: 50, desc: "地下高能金礦。" },
+        { id: "pad_WallFortify", zone: 0, type: "wall", name: "城防", icon: "🧱", x: 600, y: 800, currency: "gold", baseCost: 75, costScale: 1.35, maxLevel: 50, desc: "強化雙重城門與前哨耐久。" },
+        { id: "pad_InnTop", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_star_cannon", name: "內城北重砲", icon: "☄️", x: 750, y: 640, towerX: 750, towerY: 590, currency: "gold", baseCost: 75, costScale: 1.38, maxLevel: 60, desc: "王城內閘重砲陣位。" },
+        { id: "pad_InnBot", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_dragon_golem_foundry", name: "內城金龍", icon: "🐉", x: 750, y: 960, towerX: 750, towerY: 1010, currency: "gold", baseCost: 80, costScale: 1.38, maxLevel: 60, desc: "王城金龍守護殿。" },
+        { id: "pad_ExpandOutpost", zone: 0, type: "expand", unlocksZone: 1, name: "解鎖前哨", icon: "🔒", x: 1100, y: 800, currency: "gold", baseCost: 650, costScale: 1.0, maxLevel: 1, desc: "解鎖前哨大廳與外圍要塞陣位。" },
+        { id: "pad_OutpostTop", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_cavalry_stable", name: "前哨聖騎", icon: "🏇", x: 1500, y: 620, towerX: 1500, towerY: 570, currency: "gold", baseCost: 180, costScale: 1.38, maxLevel: 60, desc: "前哨大廳聖騎衝鋒營。" },
+        { id: "pad_OutpostBot", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_void_obelisk", name: "前哨黑洞", icon: "🌀", x: 1500, y: 980, towerX: 1500, towerY: 1030, currency: "gold", baseCost: 190, costScale: 1.38, maxLevel: 60, desc: "前哨黑洞聚怪陣位。" },
+        { id: "pad_GateOutTop", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_guard_barracks", name: "外閘鐵衛", icon: "🛡️", x: 1900, y: 650, towerX: 1900, towerY: 600, currency: "gold", baseCost: 200, costScale: 1.38, maxLevel: 60, desc: "外圍要塞大門鐵衛營。" },
+        { id: "pad_Shrine", zone: 1, type: "shrine", name: "天罰神龕", icon: "🌋", x: 2300, y: 550, currency: "mana", baseCost: 45, costScale: 1.15, maxLevel: 99, desc: "全圖天罰流星雨。" }
+      ]
+    },
+
+    // ------------------------------------------------------------------------
+    // STAGE 5: 星界滅世神殿 (Grand Apex Mega Citadel)
+    // ------------------------------------------------------------------------
+    5: {
+      width: 3000,
+      height: 1800,
+      layoutType: "grand_apex_mega_citadel",
+      halls: [
+        { id: "hall_main", name: "神殿大本營", x: 350, y: 900, baseHp: 16000, hpPerLevel: 2500, radius: 52, isMain: true },
+        { id: "hall_outpost", name: "星界前哨廳", x: 1750, y: 900, baseHp: 9000, hpPerLevel: 1500, radius: 46, isOutpost: true }
+      ],
+      wallSegments: [
+        { id: "w_out_n", type: "wall", x1: 2250, y1: 150, x2: 2250, y2: 800, isSolid: true, isGate: false, thickness: 48 },
+        { id: "gate_outpost", type: "gate", x1: 2250, y1: 800, x2: 2250, y2: 1000, isGate: true, isSolid: false, name: "星界天門", thickness: 56 },
+        { id: "w_out_s", type: "wall", x1: 2250, y1: 1000, x2: 2250, y2: 1650, isSolid: true, isGate: false, thickness: 48 },
+
+        { id: "w_inn_n", type: "wall", x1: 1050, y1: 150, x2: 1050, y2: 800, isSolid: true, isGate: false, thickness: 48 },
+        { id: "gate_inner", type: "gate", x1: 1050, y1: 800, x2: 1050, y2: 1000, isGate: true, isSolid: false, name: "神殿聖門", thickness: 56 },
+        { id: "w_inn_s", type: "wall", x1: 1050, y1: 1000, x2: 1050, y2: 1650, isSolid: true, isGate: false, thickness: 48 }
+      ],
+      bastionTurrets: [
+        { x: 2250, y: 800, name: "天門左塔" }, { x: 2250, y: 1000, name: "天門右塔" },
+        { x: 1050, y: 800, name: "聖門左塔" }, { x: 1050, y: 1000, name: "聖門右塔" }
+      ],
+      roads: [
+        {
+          id: "road_apex_center",
+          name: "星界王道",
+          waypoints: [
+            { x: 2900, y: 900 },
+            { x: 2550, y: 900 },
+            { x: 2250, y: 900 }, // Outer Gate
+            { x: 1750, y: 900 }, // Outpost Hall
+            { x: 1050, y: 900 }, // Inner Gate
+            { x: 350, y: 900 }   // Main Keep
+          ]
+        }
+      ],
+      groundPads: [
+        { id: "pad_TownHall", zone: 0, type: "town_hall", name: "大本營", icon: "🏛️", x: 350, y: 900, currency: "gold", baseCost: 150, costScale: 1.35, maxLevel: 50, desc: "終極滅世神殿核心！" },
+        { id: "pad_GoldMine", zone: 0, type: "mine", name: "金庫", icon: "🪙", x: 350, y: 650, currency: "gold", baseCost: 120, costScale: 1.35, maxLevel: 50, desc: "太古星脈金庫。" },
+        { id: "pad_WallFortify", zone: 0, type: "wall", name: "城防", icon: "🧱", x: 700, y: 900, currency: "gold", baseCost: 110, costScale: 1.35, maxLevel: 50, desc: "神級要塞城防加固。" },
+        { id: "pad_InnTop", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_dragon_golem_foundry", name: "聖殿金龍", icon: "🐉", x: 880, y: 720, towerX: 880, towerY: 670, currency: "gold", baseCost: 120, costScale: 1.38, maxLevel: 60, desc: "金龍魔像雙效殿。" },
+        { id: "pad_InnBot", zone: 0, type: "tower", customizable: true, defaultBlueprint: "bp_star_cannon", name: "聖殿破甲", icon: "☄️", x: 880, y: 1080, towerX: 880, towerY: 1130, currency: "gold", baseCost: 120, costScale: 1.38, maxLevel: 60, desc: "星界破甲巨砲。" },
+        { id: "pad_ExpandOutpost", zone: 0, type: "expand", unlocksZone: 1, name: "解鎖前線", icon: "🔒", x: 1350, y: 900, currency: "gold", baseCost: 950, costScale: 1.0, maxLevel: 1, desc: "解鎖星界前哨建地。" },
+        { id: "pad_OutpostTop", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_void_obelisk", name: "前哨黑洞", icon: "🌀", x: 1750, y: 720, towerX: 1750, towerY: 670, currency: "gold", baseCost: 260, costScale: 1.38, maxLevel: 60, desc: "黑洞引力聚怪。" },
+        { id: "pad_OutpostBot", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_cavalry_stable", name: "前哨聖騎", icon: "🏇", x: 1750, y: 1080, towerX: 1750, towerY: 1130, currency: "gold", baseCost: 260, costScale: 1.38, maxLevel: 60, desc: "重騎兵巡邏衝鋒。" },
+        { id: "pad_GateOutTop", zone: 1, type: "tower", customizable: true, defaultBlueprint: "bp_guard_barracks", name: "天門鐵衛", icon: "🛡️", x: 2100, y: 720, towerX: 2100, towerY: 670, currency: "gold", baseCost: 300, costScale: 1.38, maxLevel: 60, desc: "星界天門防線。" },
+        { id: "pad_Shrine", zone: 1, type: "shrine", name: "天罰神龕", icon: "🌋", x: 2500, y: 650, currency: "mana", baseCost: 60, costScale: 1.15, maxLevel: 99, desc: "毀天滅地天罰流星雨。" }
+      ]
+    }
+  },
+
+  // Helper method to retrieve stage configuration
+  getStageConfig: function(realmId) {
+    var id = realmId || 1;
+    return this.realmMapConfigs[id] || this.realmMapConfigs[1];
+  },
+
+  // 5 Ancient Realms Meta
   realms: [
     {
       id: 1,
       name: "第一章：古林紀元",
       sub: "Magic Epoch Forest",
-      desc: "青苔石壁要塞，哥布林、骷髏與小惡魔沿三路古道進犯。",
+      desc: "單門單牆古道要塞！哥布林與骷髏沿單道直衝東城門。",
       groundColor: "#4d8c40",
       grassDark: "#3e7533",
       pathColor: "#b58952",
@@ -433,9 +630,9 @@ window.GAME_DATA = {
     },
     {
       id: 2,
-      name: "第二章：荒漠古蹟",
-      sub: "Sun-Canyon Ruins",
-      desc: "炎熱峽谷廢墟，狂信徒與毒蠍衝擊要塞城防。",
+      name: "第二章：荒漠長道",
+      sub: "Sun-Canyon Highway",
+      desc: "一線天長道大峽谷！設有三重關卡阻擊狂暴獸人與毒蠍潮。",
       groundColor: "#d6a165",
       grassDark: "#bd884d",
       pathColor: "#9c6d3e",
@@ -451,9 +648,9 @@ window.GAME_DATA = {
     },
     {
       id: 3,
-      name: "第三章：幽暗地窟",
-      sub: "Obsidian Cavern",
-      desc: "紫晶地下古城，暗影刺客與黑曜石魔像湧出。",
+      name: "第三章：四方要塞",
+      sub: "Obsidian Cross Bastion",
+      desc: "四方十字要塞！東南西北四面大門同時遭受魔物圍攻。",
       groundColor: "#3b3355",
       grassDark: "#2d2642",
       pathColor: "#26203a",
@@ -469,9 +666,9 @@ window.GAME_DATA = {
     },
     {
       id: 4,
-      name: "第四章：冰封神殿",
-      sub: "Frostbite Sanctum",
-      desc: "極地永凍冰原，寒霜巨魔與冰狼意圖踏碎城門。",
+      name: "第四章：雙子王城",
+      sub: "Twin-Hall Frostkeep",
+      desc: "前線前哨大廳＋守護大本營雙核心！前哨失守後敵軍將直逼主城。",
       groundColor: "#7faac4",
       grassDark: "#6994b0",
       pathColor: "#547c96",
@@ -487,9 +684,9 @@ window.GAME_DATA = {
     },
     {
       id: 5,
-      name: "第五章：星界熔爐",
-      sub: "Astral Caldera",
-      desc: "星界裂隙交織，虛空收割者與太古紅龍皇降臨。",
+      name: "第五章：星界神殿",
+      sub: "Astral Apex Caldera",
+      desc: "終極滅世戰場！雙層城牆與前哨要塞迎戰時空魔神克羅諾斯。",
       groundColor: "#4a2527",
       grassDark: "#381a1c",
       pathColor: "#2e1416",
@@ -515,7 +712,7 @@ window.GAME_DATA = {
       color: "#38bdf8",
       capeColor: "#1d4ed8",
       hatColor: "#2563eb",
-      desc: "藍袍巫師，法杖射出連鎖奧術飛彈，技能冷卻縮短 25%。",
+      desc: "法杖射出連鎖奧術飛彈，技能冷卻縮短 25%。",
       baseDmg: 30,
       atkRate: 0.45,
       range: 260,
@@ -531,7 +728,7 @@ window.GAME_DATA = {
       color: "#38bdf8",
       capeColor: "#0284c7",
       hatColor: "#0369a1",
-      desc: "揮舞符文長劍，劍氣直線穿透，近戰攻守兼備。",
+      desc: "長劍劍氣直線穿透，近戰攻守兼備。",
       baseDmg: 28,
       atkRate: 0.38,
       range: 180,
@@ -547,7 +744,7 @@ window.GAME_DATA = {
       color: "#fbbf24",
       capeColor: "#dc2626",
       hatColor: "#cbd5e1",
-      desc: "銀甲紅翎騎士，攻擊附帶神聖之錘，每秒持續自愈城防。",
+      desc: "攻擊附帶神聖之錘，每秒持續自愈城防。",
       baseDmg: 28,
       atkRate: 0.45,
       range: 190,
@@ -563,423 +760,13 @@ window.GAME_DATA = {
       color: "#22c55e",
       capeColor: "#15803d",
       hatColor: "#166534",
-      desc: "身手敏捷，投擲三枚翠綠飛輪，超大金幣拾取範圍。",
+      desc: "敏捷投擲三枚翠綠飛輪，超大金幣拾取範圍。",
       baseDmg: 22,
       atkRate: 0.28,
       range: 250,
       moveSpeed: 290,
       magnetBonus: 1.7,
       projType: "multi_chakram"
-    }
-  ],
-
-  // Interactive Ground Pads
-  groundPads: [
-    // ZONE 0: CORE FORTRESS & TOWN HALL
-    {
-      id: "pad_TownHall",
-      zone: 0,
-      type: "town_hall",
-      name: "大本營",
-      engLabel: "TOWN HALL\nKEEP",
-      sub: "Citadel Hall",
-      icon: "🏛️",
-      x: 250,
-      y: 540,
-      currency: "gold",
-      baseCost: 50,
-      costScale: 1.35,
-      maxLevel: 50,
-      desc: "要塞防線終極核心！內建遠古自衛重弩砲，自動射擊靠近的魔物。升級可大幅提高大本營生命上限與恢復力。"
-    },
-    {
-      id: "pad_FrostStatue",
-      zone: 0,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_arcane_spire",
-      laneId: "road_north",
-      name: "北門陣位",
-      engLabel: "NORTH GATE\nSLOT #1",
-      sub: "North Gate Plot",
-      icon: "🏰",
-      x: 615,
-      y: 445,
-      towerX: 655,
-      towerY: 365,
-      currency: "gold",
-      baseCost: 30,
-      costScale: 1.36,
-      maxLevel: 60,
-      towerKind: "frost",
-      desc: "鎮守北城門內側的關鍵陣位！可先選擇建築類型，再配置魔塔或兵營。"
-    },
-    {
-      id: "pad_HammerStatue",
-      zone: 0,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_knight_statue",
-      laneId: "road_south",
-      name: "南門陣位",
-      engLabel: "SOUTH GATE\nSLOT #2",
-      sub: "South Gate Plot",
-      icon: "🗿",
-      x: 430,
-      y: 785,
-      towerX: 465,
-      towerY: 710,
-      currency: "gold",
-      baseCost: 30,
-      costScale: 1.38,
-      maxLevel: 60,
-      towerKind: "hammer",
-      desc: "鎮守南城門內側的防禦陣位！可按類型自由切換駐守建築。"
-    },
-    {
-      id: "pad_FlameStatue",
-      zone: 0,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_flame_mage",
-      laneId: "road_center",
-      name: "中營陣位",
-      engLabel: "CENTER\nSLOT #3",
-      sub: "Center Rampart Plot",
-      icon: "✨",
-      x: 560,
-      y: 620,
-      towerX: 625,
-      towerY: 595,
-      currency: "gold",
-      baseCost: 35,
-      costScale: 1.38,
-      maxLevel: 60,
-      towerKind: "flame",
-      desc: "位於要塞城牆中央的主陣位，火力可同時支援南北雙門。"
-    },
-    {
-      id: "pad_InnerBarracksPlot",
-      zone: 0,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_guard_barracks",
-      laneId: "road_north",
-      name: "門前陣位",
-      engLabel: "GATE FRONT\nSLOT #4",
-      sub: "Gate Chokepoint Plot",
-      icon: "🛡️",
-      x: 685,
-      y: 540,
-      towerX: 710,
-      towerY: 505,
-      currency: "gold",
-      baseCost: 45,
-      costScale: 1.36,
-      maxLevel: 60,
-      towerKind: "frost",
-      desc: "緊鄰北城門咽喉要道！極力推薦選擇【派兵兵營】類型，派兵出城堵門作戰。"
-    },
-    {
-      id: "pad_GoldMine",
-      zone: 0,
-      type: "mine",
-      name: "地下金庫",
-      engLabel: "GOLD\nVAULT",
-      sub: "Underground Vault",
-      icon: "🔥",
-      x: 245,
-      y: 345,
-      currency: "gold",
-      baseCost: 45,
-      costScale: 1.35,
-      maxLevel: 50,
-      desc: "古域地下黃金礦脈，每秒自動產出金幣，並定期派出精靈自動出城拾取戰利品。"
-    },
-    {
-      id: "pad_WallFortify",
-      zone: 0,
-      type: "wall",
-      name: "城防要塞",
-      engLabel: "FORTIFY\nWALL",
-      sub: "Wall & Gate",
-      icon: "🧱",
-      x: 430,
-      y: 540,
-      currency: "gold",
-      baseCost: 40,
-      costScale: 1.35,
-      maxLevel: 50,
-      desc: "強化全線實體石牆與南北雙城門！立即修復 50% 城防耐久，並提升受擊反傷與城牆材質階級。"
-    },
-    {
-      id: "pad_ExpandNorth",
-      zone: 0,
-      type: "expand",
-      unlocksZone: 1,
-      name: "擴建北道",
-      engLabel: "EXPAND\nNORTH",
-      sub: "Unlock North Road",
-      icon: "🔒",
-      x: 740,
-      y: 280,
-      currency: "gold",
-      baseCost: 110,
-      costScale: 1.0,
-      maxLevel: 1,
-      desc: "踏上投入金幣解鎖【北境古林防區】，開放北道前哨陣位、魔晶礦井與鐵匠神爐。"
-    },
-
-    // ZONE 1: NORTH CANYON
-    {
-      id: "pad_SwordPedestal",
-      zone: 1,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_blade_altar",
-      laneId: "road_north",
-      name: "北道前哨",
-      engLabel: "NORTH\nSLOT #5",
-      sub: "North Outpost Plot",
-      icon: "⚡",
-      x: 1020,
-      y: 285,
-      towerX: 1020,
-      towerY: 245,
-      currency: "gold",
-      baseCost: 75,
-      costScale: 1.38,
-      maxLevel: 60,
-      towerKind: "sword",
-      desc: "城外北道中段陣位，可在魔物抵達城門前先行攔截與消耗。"
-    },
-    {
-      id: "pad_NorthRoadPlot2",
-      zone: 1,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_archer_lodge",
-      laneId: "road_north",
-      name: "北道峽口",
-      engLabel: "NORTH\nSLOT #6",
-      sub: "Canyon Chokepoint",
-      icon: "🏹",
-      x: 1360,
-      y: 245,
-      towerX: 1360,
-      towerY: 205,
-      currency: "gold",
-      baseCost: 90,
-      costScale: 1.38,
-      maxLevel: 60,
-      towerKind: "frost",
-      desc: "扼守北道峽谷咽喉，適合配置破甲重塔或派兵兵營。"
-    },
-    {
-      id: "pad_ManaWell",
-      zone: 1,
-      type: "mana_well",
-      name: "魔晶礦井",
-      engLabel: "MANA\nWELL",
-      sub: "Crystal Mine",
-      icon: "💎",
-      x: 560,
-      y: 195,
-      currency: "gold",
-      baseCost: 95,
-      costScale: 1.38,
-      maxLevel: 40,
-      desc: "開採深層藍紫魔晶，每秒自動產出【魔力水晶 💎】並加快技能冷卻。"
-    },
-    {
-      id: "pad_Runeforge",
-      zone: 1,
-      type: "forge",
-      name: "鐵匠神爐",
-      engLabel: "RUNE\nFORGE",
-      sub: "Forge Altar",
-      icon: "⚒️",
-      x: 380,
-      y: 210,
-      currency: "gold",
-      baseCost: 85,
-      costScale: 1.32,
-      maxLevel: 99,
-      desc: "遠古矮人符文神爐！踏上充能即可鍛造隨機品階聖物寶箱，並永久提升英雄武器強化等級。"
-    },
-    {
-      id: "pad_ExpandEast",
-      zone: 1,
-      type: "expand",
-      unlocksZone: 2,
-      name: "擴建中路",
-      engLabel: "EXPAND\nCENTER",
-      sub: "Unlock Center Road",
-      icon: "🔒",
-      x: 1090,
-      y: 565,
-      currency: "gold",
-      baseCost: 320,
-      costScale: 1.0,
-      maxLevel: 1,
-      desc: "踏上解鎖【中路王城大道防區】，開放中路雙陣位與天罰流星神龕。"
-    },
-
-    // ZONE 2: CENTER ROAD
-    {
-      id: "pad_StarBallista",
-      zone: 2,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_star_cannon",
-      laneId: "road_center",
-      name: "中路前哨",
-      engLabel: "CENTER\nSLOT #7",
-      sub: "Crossroads Plot",
-      icon: "☄️",
-      x: 1160,
-      y: 465,
-      towerX: 1160,
-      towerY: 425,
-      currency: "gold",
-      baseCost: 130,
-      costScale: 1.40,
-      maxLevel: 60,
-      towerKind: "ballista",
-      desc: "同時覆蓋北路與中路交匯處的黃金陣位，部署遠程重塔效益極高。"
-    },
-    {
-      id: "pad_NecroCrypt",
-      zone: 2,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_cavalry_stable",
-      laneId: "road_center",
-      name: "中路前線",
-      engLabel: "CENTER\nSLOT #8",
-      sub: "Center Garrison Plot",
-      icon: "⚔️",
-      x: 1460,
-      y: 545,
-      towerX: 1460,
-      towerY: 505,
-      currency: "gold",
-      baseCost: 150,
-      costScale: 1.38,
-      maxLevel: 60,
-      towerKind: "hammer",
-      desc: "中路前線重鎮，適合部署聖騎營或星隕砲正面迎擊巨像。"
-    },
-    {
-      id: "pad_CataclysmShrine",
-      zone: 2,
-      type: "shrine",
-      name: "天罰神龕",
-      engLabel: "METEOR\nSHRINE",
-      sub: "Cataclysm Altar",
-      icon: "🌋",
-      x: 1620,
-      y: 385,
-      currency: "mana",
-      baseCost: 25,
-      costScale: 1.15,
-      maxLevel: 99,
-      desc: "踏上注入魔力水晶 💎，立即在三路戰場降下全屏太古天隕火雨，重創並擊暈全場敵軍！"
-    },
-    {
-      id: "pad_ExpandSouth",
-      zone: 2,
-      type: "expand",
-      unlocksZone: 3,
-      name: "擴建南道",
-      engLabel: "EXPAND\nSOUTH",
-      sub: "Unlock South Road",
-      icon: "🔒",
-      x: 780,
-      y: 920,
-      currency: "gold",
-      baseCost: 750,
-      costScale: 1.0,
-      maxLevel: 1,
-      desc: "踏上解鎖【南境龍魂密林防區】，開放南路兩大陣位、遠征總部與時空魔王召喚陣。"
-    },
-
-    // ZONE 3: SOUTH FOREST
-    {
-      id: "pad_DragonAltar",
-      zone: 3,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_dragon_golem_foundry",
-      laneId: "road_south",
-      name: "南道前哨",
-      engLabel: "SOUTH\nSLOT #9",
-      sub: "South Outpost Plot",
-      icon: "🐉",
-      x: 880,
-      y: 1055,
-      towerX: 880,
-      towerY: 1015,
-      currency: "gold",
-      baseCost: 220,
-      costScale: 1.42,
-      maxLevel: 60,
-      towerKind: "dragon",
-      desc: "鎮守南門外長坡的要衝陣位，適合部署金龍殿或高階控場塔。"
-    },
-    {
-      id: "pad_VoidObelisk",
-      zone: 3,
-      type: "tower",
-      customizable: true,
-      defaultBlueprint: "bp_void_obelisk",
-      laneId: "road_south",
-      name: "密林哨所",
-      engLabel: "SOUTH\nSLOT #10",
-      sub: "Deep Forest Plot",
-      icon: "🌀",
-      x: 1320,
-      y: 1125,
-      towerX: 1320,
-      towerY: 1085,
-      currency: "gold",
-      baseCost: 260,
-      costScale: 1.40,
-      maxLevel: 60,
-      towerKind: "void",
-      desc: "深入南境密林古道的前哨，部署黑洞碑可將南路怪潮聚攏殲滅。"
-    },
-    {
-      id: "pad_MercCamp",
-      zone: 3,
-      type: "mercenary",
-      name: "遠征總部",
-      engLabel: "ROYAL\nGARRISON",
-      sub: "Command Camp",
-      icon: "🏇",
-      x: 245,
-      y: 980,
-      currency: "gold",
-      baseCost: 360,
-      costScale: 1.38,
-      maxLevel: 40,
-      desc: "王國遠征騎士團大本營！升級可強化全軍士氣並支援外圍作戰。"
-    },
-    {
-      id: "pad_BossPortal",
-      zone: 3,
-      type: "portal",
-      name: "魔王召喚",
-      engLabel: "SUMMON\nBOSS",
-      sub: "Boss Portal",
-      icon: "⛩️",
-      x: 1680,
-      y: 920,
-      currency: "mana",
-      baseCost: 40,
-      costScale: 1.25,
-      maxLevel: 99,
-      desc: "消耗魔力水晶主動撕裂裂隙召喚【領域首領】，擊敗必定掉落靈魂結晶 🔮 與高階神裝寶箱！"
     }
   ],
 
@@ -992,7 +779,7 @@ window.GAME_DATA = {
       icon: "⚔️",
       color: "#f87171",
       accent: "#ef4444",
-      summary: "強化英雄法杖、十塔共鳴、攻速暴擊與兵營軍團，終極奧義【弒神威壓】專門輾壓巨像與首領。"
+      summary: "強化英雄法杖、十塔共鳴、攻速暴擊與兵營軍團，終極奧義【弒神威壓】專門碾壓巨像與首領。"
     },
     {
       id: "economy",
@@ -1014,322 +801,31 @@ window.GAME_DATA = {
     }
   ],
 
-  // 4-Tier Hierarchical Skill Tree (Parent -> Child -> Keystone Ultimate)
+  // 4-Tier Hierarchical Skill Tree
   talents: [
-    // ================= BRANCH 1: COMBAT MASTERY TREE =================
-    {
-      id: "t_hero_dmg",
-      branch: "combat",
-      tier: 1,
-      col: 1,
-      reqId: null,
-      reqLv: 0,
-      name: "魔導法杖",
-      roleTag: "第 1 階 · 核心根基",
-      icon: "🧙‍♂️",
-      maxLv: 25,
-      baseCost: 1,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "英雄普攻與三大主動技能傷害永久提升 +20% / 級。為戰術主宰樹的根基節點，升至 Lv.3 可解鎖第 2 階左右雙分支。",
-      effectPerLv: 0.20
-    },
-    {
-      id: "t_tower_dmg",
-      branch: "combat",
-      tier: 2,
-      col: 0,
-      reqId: "t_hero_dmg",
-      reqLv: 3,
-      name: "十塔共鳴",
-      roleTag: "第 2 階 · 左翼魔塔系",
-      icon: "🏰",
-      maxLv: 25,
-      baseCost: 1,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "全地圖所有攻擊魔塔與兵營基礎傷害永久提升 +18% / 級。升至 Lv.3 可向下解鎖【軍團戰歌】。",
-      effectPerLv: 0.18
-    },
-    {
-      id: "t_atk_spd",
-      branch: "combat",
-      tier: 2,
-      col: 2,
-      reqId: "t_hero_dmg",
-      reqLv: 3,
-      name: "極速迴路",
-      roleTag: "第 2 階 · 右翼敏捷系",
-      icon: "⚡",
-      maxLv: 15,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "英雄與所有防禦魔塔的攻擊頻率永久提升 +6% / 級。升至 Lv.3 可向下解鎖【弱點魔眼】。",
-      effectPerLv: 0.06
-    },
-    {
-      id: "t_summon_pow",
-      branch: "combat",
-      tier: 3,
-      col: 0,
-      reqId: "t_tower_dmg",
-      reqLv: 3,
-      name: "軍團戰歌",
-      roleTag: "第 3 階 · 派兵專精",
-      icon: "🛡️",
-      maxLv: 20,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "鐵衛、弓手、聖騎與泰坦魔像的最大生命與攻擊力 +25% / 級。升至 Lv.3 可解鎖終極奧義【弒神威壓】。",
-      effectPerLv: 0.25
-    },
-    {
-      id: "t_crit_chance",
-      branch: "combat",
-      tier: 3,
-      col: 2,
-      reqId: "t_atk_spd",
-      reqLv: 3,
-      name: "弱點魔眼",
-      roleTag: "第 3 階 · 暴擊專精",
-      icon: "🎯",
-      maxLv: 15,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "全軍暴擊率提升 +3% / 級，且暴擊傷害額外提升 +15% / 級。升至 Lv.3 可解鎖終極奧義【弒神威壓】。",
-      effectPerLv: 0.03
-    },
-    {
-      id: "t_boss_slayer",
-      branch: "combat",
-      tier: 4,
-      col: 1,
-      reqId: "t_summon_pow",
-      reqIdAlt: "t_crit_chance",
-      reqLv: 3,
-      name: "弒神威壓",
-      roleTag: "第 4 階 · 終極戰術奧義",
-      icon: "👑",
-      maxLv: 20,
-      baseCost: 3,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "【終極奧義】對領域首領 (Boss) 與重裝巨像造成額外 +25% / 級 毀滅傷害！（前置需【軍團戰歌】或【弱點魔眼】達 Lv.3）",
-      effectPerLv: 0.25
-    },
+    // COMBAT
+    { id: "t_hero_dmg", branch: "combat", tier: 1, col: 1, reqId: null, reqLv: 0, name: "魔導法杖", roleTag: "第 1 階 · 核心根基", icon: "🧙‍♂️", maxLv: 25, baseCost: 1, costCurrency: "soul", unitSuffix: "%", desc: "英雄傷害提升 +20% / 級。升至 Lv.3 解鎖下階分支。", effectPerLv: 0.20 },
+    { id: "t_tower_dmg", branch: "combat", tier: 2, col: 0, reqId: "t_hero_dmg", reqLv: 3, name: "十塔共鳴", roleTag: "第 2 階 · 左翼魔塔系", icon: "🏰", maxLv: 25, baseCost: 1, costCurrency: "soul", unitSuffix: "%", desc: "全地圖防禦塔傷害提升 +18% / 級。升至 Lv.3 解鎖【軍團戰歌】。", effectPerLv: 0.18 },
+    { id: "t_atk_spd", branch: "combat", tier: 2, col: 2, reqId: "t_hero_dmg", reqLv: 3, name: "極速迴路", roleTag: "第 2 階 · 右翼敏捷系", icon: "⚡", maxLv: 15, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "全軍攻速提升 +6% / 級。升至 Lv.3 解鎖【弱點魔眼】。", effectPerLv: 0.06 },
+    { id: "t_summon_pow", branch: "combat", tier: 3, col: 0, reqId: "t_tower_dmg", reqLv: 3, name: "軍團戰歌", roleTag: "第 3 階 · 派兵專精", icon: "🛡️", maxLv: 20, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "召喚部隊生命與攻擊 +25% / 級。升至 Lv.3 解鎖終極奧義。", effectPerLv: 0.25 },
+    { id: "t_crit_chance", branch: "combat", tier: 3, col: 2, reqId: "t_atk_spd", reqLv: 3, name: "弱點魔眼", roleTag: "第 3 階 · 暴擊專精", icon: "🎯", maxLv: 15, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "暴擊率 +3%，暴擊傷害 +15% / 級。升至 Lv.3 解鎖終極奧義。", effectPerLv: 0.03 },
+    { id: "t_boss_slayer", branch: "combat", tier: 4, col: 1, reqId: "t_summon_pow", reqIdAlt: "t_crit_chance", reqLv: 3, name: "弒神威壓", roleTag: "第 4 階 · 終極戰術奧義", icon: "👑", maxLv: 20, baseCost: 3, costCurrency: "soul", unitSuffix: "%", desc: "【終極奧義】對領域首領與巨像造成額外 +25% / 級 毀滅傷害！", effectPerLv: 0.25 },
 
-    // ================= BRANCH 2: ALCHEMY & ECONOMY TREE =================
-    {
-      id: "t_gold_drop",
-      branch: "economy",
-      tier: 1,
-      col: 1,
-      reqId: null,
-      reqLv: 0,
-      name: "黃金煉金",
-      roleTag: "第 1 階 · 核心根基",
-      icon: "🪙",
-      maxLv: 25,
-      baseCost: 1,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "擊殺任何魔物掉落的金幣數量永久提升 +20% / 級。為煉金經濟樹的根基節點，升至 Lv.3 可解鎖第 2 階左右分支。",
-      effectPerLv: 0.20
-    },
-    {
-      id: "t_mine_yield",
-      branch: "economy",
-      tier: 2,
-      col: 0,
-      reqId: "t_gold_drop",
-      reqLv: 3,
-      name: "晶礦增幅",
-      roleTag: "第 2 階 · 左翼礦脈系",
-      icon: "⛏️",
-      maxLv: 20,
-      baseCost: 1,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "地下金庫與魔晶礦井的每秒自動產量提升 +25% / 級。升至 Lv.3 可向下解鎖【紫晶萃取】。",
-      effectPerLv: 0.25
-    },
-    {
-      id: "t_magnet_rad",
-      branch: "economy",
-      tier: 2,
-      col: 2,
-      reqId: "t_gold_drop",
-      reqLv: 3,
-      name: "引力光環",
-      roleTag: "第 2 階 · 右翼後勤系",
-      icon: "🧲",
-      maxLv: 15,
-      baseCost: 1,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "英雄自動吸附地面金幣、魔晶與寶箱的磁鐵範圍擴大 +15% / 級。升至 Lv.3 可向下解鎖【節能銘文】。",
-      effectPerLv: 0.15
-    },
-    {
-      id: "t_mana_drop",
-      branch: "economy",
-      tier: 3,
-      col: 0,
-      reqId: "t_mine_yield",
-      reqLv: 3,
-      name: "紫晶萃取",
-      roleTag: "第 3 階 · 魔晶專精",
-      icon: "💎",
-      maxLv: 20,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "魔物死亡時額外掉落【魔力水晶 💎】的機率與數量提升 +15% / 級。升至 Lv.3 可解鎖終極奧義【時空聚寶盆】。",
-      effectPerLv: 0.15
-    },
-    {
-      id: "t_pad_discount",
-      branch: "economy",
-      tier: 3,
-      col: 2,
-      reqId: "t_magnet_rad",
-      reqLv: 3,
-      name: "節能銘文",
-      roleTag: "第 3 階 · 營建專精",
-      icon: "📉",
-      maxLv: 15,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "所有陣位建造與踏陣升級所需資源降低 3% / 級（最高減免 45%）。升至 Lv.3 可解鎖終極奧義【時空聚寶盆】。",
-      effectPerLv: 0.03
-    },
-    {
-      id: "t_offline_gain",
-      branch: "economy",
-      tier: 4,
-      col: 1,
-      reqId: "t_mana_drop",
-      reqIdAlt: "t_pad_discount",
-      reqLv: 3,
-      name: "時空聚寶盆",
-      roleTag: "第 4 階 · 終極財富奧義",
-      icon: "⏳",
-      maxLv: 15,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "【終極奧義】離線掛機冥想收益與每波通關賞金提升 +20% / 級！（前置需【紫晶萃取】或【節能銘文】達 Lv.3）",
-      effectPerLv: 0.20
-    },
+    // ECONOMY
+    { id: "t_gold_drop", branch: "economy", tier: 1, col: 1, reqId: null, reqLv: 0, name: "黃金煉金", roleTag: "第 1 階 · 核心根基", icon: "🪙", maxLv: 25, baseCost: 1, costCurrency: "soul", unitSuffix: "%", desc: "擊殺怪物金幣掉落 +20% / 級。升至 Lv.3 解鎖下階分支。", effectPerLv: 0.20 },
+    { id: "t_mine_yield", branch: "economy", tier: 2, col: 0, reqId: "t_gold_drop", reqLv: 3, name: "晶礦增幅", roleTag: "第 2 階 · 左翼礦脈系", icon: "⛏️", maxLv: 20, baseCost: 1, costCurrency: "soul", unitSuffix: "%", desc: "金庫與晶礦產量 +25% / 級。升至 Lv.3 解鎖【紫晶萃取】。", effectPerLv: 0.25 },
+    { id: "t_magnet_rad", branch: "economy", tier: 2, col: 2, reqId: "t_gold_drop", reqLv: 3, name: "引力光環", roleTag: "第 2 階 · 右翼後勤系", icon: "🧲", maxLv: 15, baseCost: 1, costCurrency: "soul", unitSuffix: "%", desc: "金幣磁吸範圍擴大 +15% / 級。升至 Lv.3 解鎖【節能銘文】。", effectPerLv: 0.15 },
+    { id: "t_mana_drop", branch: "economy", tier: 3, col: 0, reqId: "t_mine_yield", reqLv: 3, name: "紫晶萃取", roleTag: "第 3 階 · 魔晶專精", icon: "💎", maxLv: 20, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "怪物掉落魔力水晶機率 +15% / 級。升至 Lv.3 解鎖終極奧義。", effectPerLv: 0.15 },
+    { id: "t_pad_discount", branch: "economy", tier: 3, col: 2, reqId: "t_magnet_rad", reqLv: 3, name: "節能銘文", roleTag: "第 3 階 · 營建專精", icon: "📉", maxLv: 15, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "所有建築建造升級費用 -3% / 級（最高 -45%）。", effectPerLv: 0.03 },
+    { id: "t_offline_gain", branch: "economy", tier: 4, col: 1, reqId: "t_mana_drop", reqIdAlt: "t_pad_discount", reqLv: 3, name: "時空聚寶盆", roleTag: "第 4 階 · 終極財富奧義", icon: "⏳", maxLv: 15, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "【終極奧義】離線掛機收益與每波通關賞金 +20% / 級！", effectPerLv: 0.20 },
 
-    // ================= BRANCH 3: BASTION ARCHITECTURE TREE =================
-    {
-      id: "t_wall_hp",
-      branch: "bastion",
-      tier: 1,
-      col: 1,
-      reqId: null,
-      reqLv: 0,
-      name: "不朽城垣",
-      roleTag: "第 1 階 · 核心根基",
-      icon: "🧱",
-      maxLv: 25,
-      baseCost: 1,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "全線城牆、雙城門與守護大本營的最大耐久度提升 +25% / 級。為要塞神工樹的根基節點，升至 Lv.3 可解鎖第 2 階分支。",
-      effectPerLv: 0.25
-    },
-    {
-      id: "t_wall_regen",
-      branch: "bastion",
-      tier: 2,
-      col: 0,
-      reqId: "t_wall_hp",
-      reqLv: 3,
-      name: "生機修復",
-      roleTag: "第 2 階 · 左翼守禦系",
-      icon: "🌿",
-      maxLv: 15,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "城牆與守護大本營每秒自動修復 0.5% / 級 最大生命值。升至 Lv.3 可向下解鎖【雷霆城垛】。",
-      effectPerLv: 0.005
-    },
-    {
-      id: "t_step_speed",
-      branch: "bastion",
-      tier: 2,
-      col: 2,
-      reqId: "t_wall_hp",
-      reqLv: 3,
-      name: "瞬發踏陣",
-      roleTag: "第 2 階 · 右翼神工系",
-      icon: "🏃",
-      maxLv: 10,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "英雄踏上地面魔陣時，金幣與魔晶注入升級的速度提升 +25% / 級。升至 Lv.3 可向下解鎖【秘典減卻】。",
-      effectPerLv: 0.25
-    },
-    {
-      id: "t_wall_thorns",
-      branch: "bastion",
-      tier: 3,
-      col: 0,
-      reqId: "t_wall_regen",
-      reqLv: 3,
-      name: "雷霆城垛",
-      roleTag: "第 3 階 · 反傷專精",
-      icon: "⚡",
-      maxLv: 20,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "當魔物攻擊城牆或城門時，立即反彈相當於英雄攻擊力 50% / 級 的雷電真實反傷！升至 Lv.3 可解鎖終極奧義【皇族遺產】。",
-      effectPerLv: 0.50
-    },
-    {
-      id: "t_skill_cd",
-      branch: "bastion",
-      tier: 3,
-      col: 2,
-      reqId: "t_step_speed",
-      reqLv: 3,
-      name: "秘典減卻",
-      roleTag: "第 3 階 · 奧術專精",
-      icon: "📖",
-      maxLv: 15,
-      baseCost: 2,
-      costCurrency: "soul",
-      unitSuffix: "%",
-      desc: "三大主動神技（風暴吸金、聖光壁壘、太古天隕）冷卻時間縮短 3% / 級。升至 Lv.3 可解鎖終極奧義【皇族遺產】。",
-      effectPerLv: 0.03
-    },
-    {
-      id: "t_start_gold",
-      branch: "bastion",
-      tier: 4,
-      col: 1,
-      reqId: "t_wall_thorns",
-      reqIdAlt: "t_skill_cd",
-      reqLv: 3,
-      name: "皇族遺產",
-      roleTag: "第 4 階 · 終極神工奧義",
-      icon: "🏆",
-      maxLv: 15,
-      baseCost: 3,
-      costCurrency: "soul",
-      unitSuffix: "金",
-      desc: "【終極奧義】古神轉生或前往新古域章節時，初始開局金幣額外 +200 / 級！（前置需【雷霆城垛】或【秘典減卻】達 Lv.3）",
-      effectPerLv: 200
-    }
+    // BASTION
+    { id: "t_wall_hp", branch: "bastion", tier: 1, col: 1, reqId: null, reqLv: 0, name: "不朽城垣", roleTag: "第 1 階 · 核心根基", icon: "🧱", maxLv: 25, baseCost: 1, costCurrency: "soul", unitSuffix: "%", desc: "全線城牆與大本營耐久 +25% / 級。升至 Lv.3 解鎖下階分支。", effectPerLv: 0.25 },
+    { id: "t_wall_regen", branch: "bastion", tier: 2, col: 0, reqId: "t_wall_hp", reqLv: 3, name: "生機修復", roleTag: "第 2 階 · 左翼守禦系", icon: "🌿", maxLv: 15, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "城牆與大本營每秒自愈 0.5% / 級。升至 Lv.3 解鎖【雷霆城垛】。", effectPerLv: 0.005 },
+    { id: "t_step_speed", branch: "bastion", tier: 2, col: 2, reqId: "t_wall_hp", reqLv: 3, name: "瞬發踏陣", roleTag: "第 2 階 · 右翼神工系", icon: "🏃", maxLv: 10, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "踏陣升級資源注入速度 +25% / 級。升至 Lv.3 解鎖【秘典減卻】。", effectPerLv: 0.25 },
+    { id: "t_wall_thorns", branch: "bastion", tier: 3, col: 0, reqId: "t_wall_regen", reqLv: 3, name: "雷霆城垛", roleTag: "第 3 階 · 反傷專精", icon: "⚡", maxLv: 20, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "城牆受擊時反彈相當於英雄攻擊 50% / 級的雷電反傷！", effectPerLv: 0.50 },
+    { id: "t_skill_cd", branch: "bastion", tier: 3, col: 2, reqId: "t_step_speed", reqLv: 3, name: "秘典減卻", roleTag: "第 3 階 · 奧術專精", icon: "📖", maxLv: 15, baseCost: 2, costCurrency: "soul", unitSuffix: "%", desc: "三大主動神技冷卻縮短 3% / 級。升至 Lv.3 解鎖終極奧義。", effectPerLv: 0.03 },
+    { id: "t_start_gold", branch: "bastion", tier: 4, col: 1, reqId: "t_wall_thorns", reqIdAlt: "t_skill_cd", reqLv: 3, name: "皇族遺產", roleTag: "第 4 階 · 終極神工奧義", icon: "🏆", maxLv: 15, baseCost: 3, costCurrency: "soul", unitSuffix: "金", desc: "【終極奧義】轉生或前往新章節時，初始開局金幣 +200 / 級！", effectPerLv: 200 }
   ],
 
   // Equipment Rarities
@@ -1386,20 +882,20 @@ window.GAME_DATA = {
 
   // Quests
   quests: [
-    { id: 1, title: "踏上北門或南門升級第一座防禦塔", type: "pad_lv", targetId: "pad_FrostStatue", goal: 2, rewardGold: 80, rewardMana: 10, rewardSoul: 1 },
-    { id: 2, title: "踏上陣位建造任意新魔塔或兵營", type: "any_custom_built", goal: 3, rewardGold: 120, rewardMana: 15, rewardSoul: 1 },
-    { id: 3, title: "在科技藍圖解鎖第 3 或第 4 種建築", type: "unlock_bp_count", goal: 3, rewardGold: 150, rewardMana: 18, rewardSoul: 2 },
+    { id: 1, title: "在城內建造第一座防禦塔", type: "any_tower_built", goal: 1, rewardGold: 80, rewardMana: 10, rewardSoul: 1 },
+    { id: 2, title: "踏上陣位升級魔塔至 Lv.3", type: "any_tower_lv", goal: 3, rewardGold: 120, rewardMana: 15, rewardSoul: 1 },
+    { id: 3, title: "在科技藍圖解鎖第 3 種建築", type: "unlock_bp_count", goal: 3, rewardGold: 150, rewardMana: 18, rewardSoul: 2 },
     { id: 4, title: "成功擊退第 3 波魔物大軍", type: "wave", goal: 3, rewardGold: 200, rewardMana: 22, rewardSoul: 2 },
-    { id: 5, title: "踏上擴建北道解鎖外圍峽谷古道", type: "zone", goal: 1, rewardGold: 280, rewardMana: 30, rewardSoul: 2 },
-    { id: 6, title: "在道路旁建造鐵衛營或弓手營派兵迎敵", type: "any_troop_built", goal: 1, rewardGold: 360, rewardMana: 35, rewardSoul: 3 },
-    { id: 7, title: "踏上鐵匠神爐鍛造第一件聖物裝備", type: "pad_lv", targetId: "pad_Runeforge", goal: 1, rewardGold: 420, rewardMana: 40, rewardSoul: 3 },
-    { id: 8, title: "將任意防禦塔或兵營升級至 Lv.5", type: "any_tower_lv", goal: 5, rewardGold: 600, rewardMana: 50, rewardSoul: 3 },
-    { id: 9, title: "踏上擴建解鎖中路王城大道防線", type: "zone", goal: 2, rewardGold: 950, rewardMana: 70, rewardSoul: 4 },
-    { id: 10, title: "突破第 10 波並擊殺首領魔王", type: "wave", goal: 10, rewardGold: 1800, rewardMana: 120, rewardSoul: 6 },
-    { id: 11, title: "踏上擴建解鎖南境密林古道", type: "zone", goal: 3, rewardGold: 3000, rewardMana: 180, rewardSoul: 8 },
-    { id: 12, title: "解鎖全部 10 種魔塔與兵營藍圖", type: "unlock_bp_count", goal: 10, rewardGold: 5000, rewardMana: 280, rewardSoul: 12 },
-    { id: 13, title: "將任意防線建築進化至 Lv.15", type: "any_tower_lv", goal: 15, rewardGold: 9500, rewardMana: 480, rewardSoul: 15 },
-    { id: 14, title: "通關第 25 波三路魔潮狂攻", type: "wave", goal: 25, rewardGold: 20000, rewardMana: 900, rewardSoul: 25 },
-    { id: 15, title: "征服第一章 50 波並前進第二章古域", type: "wave", goal: 50, rewardGold: 60000, rewardMana: 2500, rewardSoul: 50 }
+    { id: 5, title: "踏上擴建解鎖城外古道防區", type: "zone", goal: 1, rewardGold: 280, rewardMana: 30, rewardSoul: 2 },
+    { id: 6, title: "建造鐵衛營或弓手營出城迎戰", type: "any_troop_built", goal: 1, rewardGold: 360, rewardMana: 35, rewardSoul: 3 },
+    { id: 7, title: "踏上鐵匠神爐鍛造聖物裝備", type: "forge_equip", goal: 1, rewardGold: 420, rewardMana: 40, rewardSoul: 3 },
+    { id: 8, title: "將任意防禦塔升級至 Lv.7", type: "any_tower_lv", goal: 7, rewardGold: 600, rewardMana: 50, rewardSoul: 3 },
+    { id: 9, title: "擊破第 10 波領域首領 Boss", type: "wave", goal: 10, rewardGold: 1800, rewardMana: 120, rewardSoul: 6 },
+    { id: 10, title: "解鎖全部 10 種魔塔與兵營", type: "unlock_bp_count", goal: 10, rewardGold: 5000, rewardMana: 280, rewardSoul: 12 },
+    { id: 11, title: "征服第一章前往第二章荒漠長道", type: "wave", goal: 50, rewardGold: 60000, rewardMana: 2500, rewardSoul: 50 }
   ]
 };
+
+// Initial default groundPads reference
+window.GAME_DATA.groundPads = window.GAME_DATA.realmMapConfigs[1].groundPads;
+window.GAME_DATA.mapConfig = window.GAME_DATA.realmMapConfigs[1];

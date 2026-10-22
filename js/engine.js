@@ -13,18 +13,22 @@ if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D
 }
 
 /* ==========================================================================
-   Ancient Arcane Bastion (古域魔陣：守護神殿) - Core 2.5D Engine (v1.4.2)
-   - Procedural Figures for ALL 11 Monsters and Friendly Troops (No Circles!)
-   - Town Hall (守護大本營) Defense & Defeat Mechanics
-   - Dual Wall & Town Hall HP Bars and Real-Time Road Radar
-   - Multi-Lane Challenging Wave Spawning & Monster Siege AI
+   Ancient Arcane Bastion (古域魔陣：守護神殿) - Core 2.5D Engine (v1.6.0)
+   - Dynamic Stage Maps:
+     1. Stage 1: Exactly 1 Wall, 1 Gate (East Gate), 1 Road, 1 Keep
+     2. Stage 2: 1 Long Line Canyon Road with 3 Checkpoint Walls & Massive Hordes
+     3. Stage 3: 4 Walls, 4 Gates (East, South, West, North - ESWT)
+     4. Stage 4: Multiple Halls (Forward Outpost Keep + Main Citadel Keep)
+     5. Stage 5: Grand Apex Astral Mega-Fortress
+   - Tower Locking: Once built (level >= 1), tower type cannot be changed!
+   - Ultra-compact mobile HUD support & safe-area rendering
    ========================================================================== */
 
 window.GameEngine = {
   canvas: null,
   ctx: null,
-  width: 2100,
-  height: 1450,
+  width: 2400,
+  height: 1500,
   camera: { x: 0, y: 0, zoom: 1, userZoomMult: 0.85 },
   lastTime: 0,
   running: false,
@@ -32,7 +36,7 @@ window.GameEngine = {
   aiMode: 0, // 0 = Manual, 1 = Auto-Loot, 2 = Full Auto-Step
   isDefeated: false,
   gateBreached: false,
-  roadEnemyCounts: { road_north: 0, road_center: 0, road_south: 0 },
+  roadEnemyCounts: { road_north: 0, road_center: 0, road_south: 0, road_main: 0, road_long: 0, road_east: 0, road_west: 0 },
 
   // Persistent Player State
   state: {
@@ -64,8 +68,8 @@ window.GameEngine = {
   },
 
   hero: {
-    x: 560,
-    y: 520,
+    x: 350,
+    y: 750,
     vx: 0,
     vy: 0,
     radius: 20,
@@ -77,24 +81,15 @@ window.GameEngine = {
     animPhase: 0
   },
 
+  halls: [],
+  townHall: { x: 280, y: 750, hp: 1800, maxHp: 1800, radius: 46, flashTimer: 0, atkTimer: 0 },
+
   wall: {
     hp: 850,
-    maxHp: 850,
-    x1: 350,
-    y1: 1340,
-    x2: 980,
-    y2: 110
+    maxHp: 850
   },
 
-  townHall: {
-    x: 250,
-    y: 540,
-    hp: 1800,
-    maxHp: 1800,
-    radius: 46,
-    flashTimer: 0,
-    atkTimer: 0
-  },
+  checkpoints: [],
 
   waveState: {
     spawned: 0,
@@ -120,6 +115,9 @@ window.GameEngine = {
   floatingTexts: [],
   burnZones: [],
   scenery: [],
+  wallSegments: [],
+  bastionTurrets: [],
+  roads: [],
 
   input: {
     keys: {},
@@ -136,20 +134,9 @@ window.GameEngine = {
     this.canvas = document.getElementById("game-canvas");
     this.ctx = this.canvas.getContext("2d");
 
-    if (window.GAME_DATA && window.GAME_DATA.mapConfig) {
-      this.width = window.GAME_DATA.mapConfig.width || 2100;
-      this.height = window.GAME_DATA.mapConfig.height || 1450;
-      if (window.GAME_DATA.mapConfig.townHall) {
-        this.townHall.x = window.GAME_DATA.mapConfig.townHall.x || 250;
-        this.townHall.y = window.GAME_DATA.mapConfig.townHall.y || 540;
-        this.townHall.radius = window.GAME_DATA.mapConfig.townHall.radius || 46;
-      }
-    }
-
-    this.initDefaultPads();
     this.loadSave();
-    this.generateScenery();
-    this.recalcWallStats(true);
+    this.loadRealmMap(this.state.realmId);
+    this.initDefaultPads();
     this.setupWave(this.state.wave);
     this.bindInputs();
     this.handleResize();
@@ -166,6 +153,51 @@ window.GameEngine = {
     requestAnimationFrame(function(ts) { self.loop(ts); });
   },
 
+  // Dynamic Map Loader for the Active Stage
+  loadRealmMap: function(realmId) {
+    var id = realmId || this.state.realmId || 1;
+    var cfg = window.GAME_DATA.getStageConfig(id);
+
+    this.width = cfg.width;
+    this.height = cfg.height;
+    this.layoutType = cfg.layoutType || "single_wall_single_gate";
+    this.wallSegments = JSON.parse(JSON.stringify(cfg.wallSegments || []));
+    this.bastionTurrets = cfg.bastionTurrets || [];
+    this.roads = cfg.roads || [];
+    window.GAME_DATA.groundPads = cfg.groundPads || [];
+    window.GAME_DATA.mapConfig = cfg;
+
+    // Load Halls
+    this.halls = JSON.parse(JSON.stringify(cfg.halls || []));
+    this.halls.forEach(function(h) {
+      h.hp = h.baseHp || 1800;
+      h.maxHp = h.baseHp || 1800;
+      h.flashTimer = 0;
+      h.atkTimer = 0;
+    });
+    this.townHall = this.halls[0] || { x: 280, y: 750, hp: 1800, maxHp: 1800, radius: 46 };
+
+    // Initialize Checkpoints for Stage 2
+    if (this.layoutType === "long_line_three_checkpoints") {
+      this.checkpoints = [
+        { index: 1, name: "第一道前哨關卡", hp: 1200, maxHp: 1200, breached: false, x: 2350 },
+        { index: 2, name: "第二道要塞關卡", hp: 2200, maxHp: 2200, breached: false, x: 1500 },
+        { index: 3, name: "第三道王城關卡", hp: 3500, maxHp: 3500, breached: false, x: 750 }
+      ];
+    } else {
+      this.checkpoints = [];
+    }
+
+    this.recalcWallStats(true);
+    this.generateScenery();
+
+    // Position hero safely in the inner sanctuary near the main keep
+    if (this.townHall) {
+      this.hero.x = this.townHall.x + 85;
+      this.hero.y = this.townHall.y;
+    }
+  },
+
   initDefaultPads: function() {
     var self = this;
     if (!Array.isArray(this.state.unlockedBlueprints)) {
@@ -177,22 +209,18 @@ window.GameEngine = {
       }
     });
 
-    window.GAME_DATA.groundPads.forEach(function(p) {
+    (window.GAME_DATA.groundPads || []).forEach(function(p) {
       var existing = self.state.pads[p.id];
       var defaultBp = p.defaultBlueprint || "bp_arcane_spire";
       if (!existing) {
-        var startLv = (p.id === "pad_FrostStatue" || p.id === "pad_HammerStatue" || p.id === "pad_TownHall") ? 1 : 0;
+        var startLv = (p.id === "pad_TownHall" || p.id === "pad_GateInner" || p.id === "pad_FrostStatue") ? 1 : 0;
         self.state.pads[p.id] = {
           level: startLv,
           invested: 0,
           cooldown: 0,
-          blueprintId: p.customizable ? defaultBp : null,
+          blueprintId: p.customizable ? (startLv > 0 ? defaultBp : null) : null,
           atkTimer: 0
         };
-      } else {
-        if (p.customizable && !existing.blueprintId) {
-          existing.blueprintId = defaultBp;
-        }
       }
     });
 
@@ -204,27 +232,24 @@ window.GameEngine = {
   },
 
   generateScenery: function() {
-    this.scenery = [
-      { x: 140, y: 180, kind: "tree", scale: 1.2 },
-      { x: 460, y: 120, kind: "rune_tree", scale: 1.15 },
-      { x: 740, y: 120, kind: "tree", scale: 1.1 },
-      { x: 110, y: 940, kind: "tree", scale: 1.25 },
-      { x: 310, y: 1120, kind: "rune_tree", scale: 1.15 },
-      { x: 1080, y: 125, kind: "rune_tree", scale: 1.2 },
-      { x: 1380, y: 115, kind: "tree", scale: 1.15 },
-      { x: 1680, y: 120, kind: "tree", scale: 1.25 },
-      { x: 1940, y: 140, kind: "rune_tree", scale: 1.2 },
-      { x: 1220, y: 420, kind: "crystal_cluster", color: "#38bdf8", scale: 1.1 },
-      { x: 1580, y: 460, kind: "tree", scale: 1.15 },
-      { x: 1840, y: 480, kind: "crystal_cluster", color: "#d946ef", scale: 1.15 },
-      { x: 1140, y: 810, kind: "tree", scale: 1.1 },
-      { x: 1440, y: 780, kind: "crystal_cluster", color: "#a855f7", scale: 1.2 },
-      { x: 1760, y: 820, kind: "rune_tree", scale: 1.2 },
-      { x: 960, y: 1260, kind: "tree", scale: 1.25 },
-      { x: 1320, y: 1280, kind: "rune_tree", scale: 1.15 },
-      { x: 1680, y: 1310, kind: "crystal_cluster", color: "#38bdf8", scale: 1.15 },
-      { x: 1950, y: 1290, kind: "tree", scale: 1.2 }
-    ];
+    this.scenery = [];
+    var count = Math.floor((this.width * this.height) / 140000);
+    var kinds = ["tree", "rune_tree", "crystal_cluster"];
+    for (var i = 0; i < count; i++) {
+      var sx = 80 + Math.random() * (this.width - 160);
+      var sy = 100 + Math.random() * (this.height - 200);
+      // Avoid roads and townhall
+      var distToHall = Math.hypot(sx - this.townHall.x, sy - this.townHall.y);
+      if (distToHall > 130) {
+        this.scenery.push({
+          x: sx,
+          y: sy,
+          kind: kinds[Math.floor(Math.random() * kinds.length)],
+          scale: 0.95 + Math.random() * 0.35,
+          color: Math.random() < 0.5 ? "#38bdf8" : "#d946ef"
+        });
+      }
+    }
   },
 
   handleResize: function() {
@@ -268,37 +293,75 @@ window.GameEngine = {
     return true;
   },
 
+  // TOWER LOCKING: Once built (level >= 1), tower type cannot be changed!
   selectPadBlueprint: function(padId, bpId) {
-    var pad = window.GAME_DATA.groundPads.find(function(p) { return p.id === padId; });
+    var pad = (window.GAME_DATA.groundPads || []).find(function(p) { return p.id === padId; });
     if (!pad || !pad.customizable) return false;
+    var st = this.state.pads[padId];
+    if (!st) return false;
+
+    // Hard constraint: If already built (level >= 1), type is locked!
+    if (st.level >= 1) {
+      if (window.GameUI) window.GameUI.showToast("⚠️ 此陣位防禦塔已建造完畢，類型已鎖定無法更改！");
+      return false;
+    }
+
     var bp = this.getBlueprintById(bpId);
     if (!bp) return false;
 
-    if (!this.isBlueprintUnlocked(bpId)) {
-      var ok = this.unlockBlueprint(bpId);
+    if (!this.isBlueprintUnlocked(bp.id)) {
+      var ok = this.unlockBlueprint(bp.id);
       if (!ok) return false;
     }
 
-    var st = this.state.pads[padId];
-    if (!st) return false;
-    var prevBp = st.blueprintId;
-    st.blueprintId = bpId;
-    if (st.level === 0 && this.state.gold >= this.getPadCost(pad)) {
-      this.spawnBurstParticles(pad.x, pad.y, bp.color || "#fde047", 18);
-    } else if (prevBp !== bpId) {
-      this.spawnBurstParticles(pad.x, pad.y, bp.color || "#38bdf8", 22);
-      window.SoundEngine.playUpgradeComplete();
-    }
+    st.blueprintId = bp.id;
     this.saveGame();
     return true;
   },
 
+  // Confirm building the selected tower onto an empty plot (st.level = 0 -> 1)
+  buildPadTower: function(padId, bpId) {
+    var pad = (window.GAME_DATA.groundPads || []).find(function(p) { return p.id === padId; });
+    if (!pad || !pad.customizable) return false;
+    var st = this.state.pads[padId];
+    if (!st || st.level >= 1) return false;
+
+    var bp = this.getBlueprintById(bpId || st.blueprintId || pad.defaultBlueprint);
+    if (!bp) return false;
+
+    if (!this.isBlueprintUnlocked(bp.id)) {
+      var unlOk = this.unlockBlueprint(bp.id);
+      if (!unlOk) return false;
+    }
+
+    var cost = this.getPadCost(pad);
+    if (this.state.gold < cost) {
+      if (window.GameUI) window.GameUI.showToast("⚠️ 金幣不足！建造需要 🪙" + cost);
+      return false;
+    }
+
+    this.state.gold -= cost;
+    st.blueprintId = bp.id;
+    st.level = 1;
+    st.invested = 0;
+    this.spawnBurstParticles(pad.x, pad.y, bp.color || "#fde047", 24);
+    window.SoundEngine.playUpgradeComplete();
+    this.checkQuestProgress();
+    this.saveGame();
+
+    if (window.GameUI) {
+      window.GameUI.updateHUD();
+      window.GameUI.updateContextCard();
+      window.GameUI.showToast("🎉 成功建造【" + bp.icon + " " + bp.name + "】！類型已正式鎖定！");
+    }
+    return true;
+  },
+
   getTacticalAdvice: function() {
-    var self = this;
     var st = this.state;
     var w = st.wave;
 
-    // 1. Town Hall under immediate attack
+    // 1. Town Hall Under Attack
     if (this.townHall.hp < this.townHall.maxHp * 0.5) {
       return {
         urgency: "critical",
@@ -310,80 +373,26 @@ window.GameEngine = {
       };
     }
 
-    // 2. Wall HP warning
-    if (this.wall.hp <= 0) {
+    // 2. Checkpoint or Wall Breached
+    if (this.gateBreached || this.wall.hp <= 0) {
       return {
         urgency: "critical",
         icon: "🚨",
-        title: "城門防線已被攻破！",
-        reason: "城門已洞開！踏上【城防要塞】或施放【聖光壁壘】緊急修補城防！",
+        title: "城防關卡已被攻破！",
+        reason: "城門洞開！踏上【城防要塞】或施放【聖光壁壘】緊急修補防線！",
         targetPadId: "pad_WallFortify",
         recBpId: null
       };
     }
 
-    if (this.wall.hp / this.wall.maxHp < 0.45) {
-      return {
-        urgency: "high",
-        icon: "🛡️",
-        title: "城防耐久不足 45%！",
-        reason: "敵人正在猛攻城門！建議踏上【城防要塞】修復城牆或派兵攔截。",
-        targetPadId: "pad_WallFortify",
-        recBpId: null
-      };
-    }
-
-    // 3. Need Barracks
-    var barracksBuilt = 0;
-    window.GAME_DATA.groundPads.forEach(function(p) {
-      if (!p.customizable) return;
-      var pst = st.pads[p.id];
-      if (pst && pst.level > 0) {
-        var bp = self.getPadBlueprint(p);
-        if (bp && bp.category === "barracks") barracksBuilt++;
-      }
-    });
-
-    if (barracksBuilt === 0 && w >= 2) {
-      var roadPlot = window.GAME_DATA.groundPads.find(function(p) {
-        return p.customizable && st.unlockedZones.indexOf(p.zone) !== -1 && (!st.pads[p.id] || st.pads[p.id].level === 0 || p.id === "pad_InnerBarracksPlot");
-      });
-      return {
-        urgency: "high",
-        icon: "🛡️",
-        title: "建造【鐵衛營】主動出城攔截",
-        reason: "道路缺乏士兵阻截！在城門外或門前建造【鐵衛營】能擋住大批魔物。",
-        targetPadId: roadPlot ? roadPlot.id : "pad_InnerBarracksPlot",
-        recBpId: "bp_guard_barracks"
-      };
-    }
-
-    // 4. Expansion
-    var nextExpand = window.GAME_DATA.groundPads.find(function(p) {
-      return p.type === "expand" && st.unlockedZones.indexOf(p.zone) !== -1 && (!st.pads[p.id] || st.pads[p.id].level === 0);
-    });
-    if (nextExpand && st.gold >= this.getPadRemaining(nextExpand) * 0.9) {
-      return {
-        urgency: "high",
-        icon: "🔓",
-        title: "可解鎖【" + nextExpand.name + "】",
-        reason: "金幣充足！踏上帶鎖石陣擴展外圍戰場，建造更多防衛陣位。",
-        targetPadId: nextExpand.id,
-        recBpId: null
-      };
-    }
-
-    // 5. Boss Wave Alert
-    if (w % 5 === 4 || w % 5 === 0) {
-      var bossPad = window.GAME_DATA.groundPads.find(function(p) {
-        return p.customizable && st.unlockedZones.indexOf(p.zone) !== -1;
-      });
+    // 3. Boss Alert
+    if (w % 5 === 0 || w % 5 === 4) {
       return {
         urgency: "boss",
         icon: "☄️",
         title: "預警：第 " + (w % 5 === 0 ? w : w + 1) + " 波巨型首領來襲！",
-        reason: "強烈建議建造【星隕砲】或升級【奧術塔】破甲單體輸出！",
-        targetPadId: bossPad ? bossPad.id : "pad_FrostStatue",
+        reason: "強烈建議建造【星隕砲】重型破甲或升級主力輸出塔！",
+        targetPadId: "pad_GateInner",
         recBpId: this.isBlueprintUnlocked("bp_star_cannon") ? "bp_star_cannon" : "bp_arcane_spire"
       };
     }
@@ -391,9 +400,9 @@ window.GameEngine = {
     return {
       urgency: "normal",
       icon: "⚔️",
-      title: "防線巡邏中，出城迎擊魔物",
-      reason: "可自由穿過北門或南門走向外圍古道，消滅魔物拾取金幣！",
-      targetPadId: "pad_FrostStatue",
+      title: "防線巡邏中，迎擊魔物",
+      reason: "可自由穿過城門出城迎敵，拾取金幣升級防線！",
+      targetPadId: "pad_GateInner",
       recBpId: null
     };
   },
@@ -468,40 +477,68 @@ window.GameEngine = {
   },
 
   recalcWallStats: function(healFull) {
+    var realmId = this.state.realmId || 1;
     var wallFortLv = (this.state.pads["pad_WallFortify"] && this.state.pads["pad_WallFortify"].level) || 0;
     var hallLv = (this.state.pads["pad_TownHall"] && this.state.pads["pad_TownHall"].level) || 1;
     this.state.townHallLevel = hallLv;
 
-    var wallBase = 850 + wallFortLv * 320 + (this.state.realmId - 1) * 900;
+    var wallBase = 850 + wallFortLv * 320 + (realmId - 1) * 900;
     var wallMult = (1 + this.getTalentVal("t_wall_hp")) * (1 + this.getEquipStat("wallHp"));
     var newWallMax = Math.round(wallBase * wallMult);
+
     var wallRatio = this.wall.maxHp > 0 ? this.wall.hp / this.wall.maxHp : 1;
     this.wall.maxHp = newWallMax;
     this.wall.hp = healFull ? newWallMax : Math.min(newWallMax, Math.max(0, Math.round(newWallMax * wallRatio)));
-
-    var hallBase = 1800 + (hallLv - 1) * 450 + (this.state.realmId - 1) * 1500;
-    var hallMult = (1 + this.getTalentVal("t_wall_hp") * 0.8) * (1 + this.getEquipStat("wallHp") * 0.8);
-    var newHallMax = Math.round(hallBase * hallMult);
-    var hallRatio = this.townHall.maxHp > 0 ? this.townHall.hp / this.townHall.maxHp : 1;
-    this.townHall.maxHp = newHallMax;
-    this.townHall.hp = healFull ? newHallMax : Math.min(newHallMax, Math.max(1, Math.round(newHallMax * hallRatio)));
-
     this.gateBreached = (this.wall.hp <= 0);
+
+    // Recalculate checkpoints for Stage 2
+    if (this.checkpoints && this.checkpoints.length > 0) {
+      this.checkpoints.forEach(function(cp, idx) {
+        var cpBase = 1200 + idx * 900 + wallFortLv * 250;
+        cp.maxHp = Math.round(cpBase * wallMult);
+        cp.hp = healFull ? cp.maxHp : Math.min(cp.maxHp, cp.hp);
+        cp.breached = (cp.hp <= 0);
+      });
+    }
+
+    // Recalculate Halls (Main Keep + Outpost)
+    var self = this;
+    if (this.halls && this.halls.length > 0) {
+      this.halls.forEach(function(h) {
+        var base = h.baseHp || 1800;
+        var hMax = Math.round(base * (1 + (hallLv - 1) * 0.25) * wallMult);
+        var curRatio = h.maxHp > 0 ? (h.hp / h.maxHp) : 1;
+        h.maxHp = hMax;
+        h.hp = healFull ? hMax : Math.min(hMax, Math.max(1, Math.round(hMax * curRatio)));
+      });
+      this.townHall = this.halls[0];
+    }
   },
 
   isPointInsideFortress: function(x, y) {
-    var wx = this.wall.x2 - this.wall.x1;
-    var wy = this.wall.y2 - this.wall.y1;
-    var cross = (x - this.wall.x1) * wy - (y - this.wall.y1) * wx;
-    return cross > 0;
+    if (this.layoutType === "four_walls_four_gates") {
+      return (x >= 750 && x <= 1650 && y >= 750 && y <= 1650);
+    }
+    // Default vertical wall partition
+    var wallX = (this.wallSegments && this.wallSegments[0] && this.wallSegments[0].x1) || 950;
+    return x < wallX;
   },
 
   getNearestGatePoint: function(x, y) {
-    var gNorth = { x: 780, y: 435 };
-    var gSouth = { x: 565, y: 890 };
-    var dN = Math.hypot(x - gNorth.x, y - gNorth.y);
-    var dS = Math.hypot(x - gSouth.x, y - gSouth.y);
-    return dN < dS ? gNorth : gSouth;
+    var gates = (this.wallSegments || []).filter(function(s) { return s.type === "gate" || s.isGate; });
+    if (gates.length === 0) return { x: 950, y: 750 };
+    var best = null;
+    var bestDist = Infinity;
+    for (var i = 0; i < gates.length; i++) {
+      var gx = (gates[i].x1 + gates[i].x2) * 0.5;
+      var gy = (gates[i].y1 + gates[i].y2) * 0.5;
+      var d = Math.hypot(x - gx, y - gy);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { x: gx, y: gy };
+      }
+    }
+    return best || { x: 950, y: 750 };
   },
 
   getSmartMovePoint: function(curX, curY, destX, destY) {
@@ -519,15 +556,23 @@ window.GameEngine = {
   },
 
   resolveWallCollisions: function(entity, isHeroOrAlly) {
-    var segments = (window.GAME_DATA.mapConfig && window.GAME_DATA.mapConfig.wallSegments) || [];
+    var segments = this.wallSegments || [];
     var r = (entity.radius || 16) + 16;
 
     for (var i = 0; i < segments.length; i++) {
       var seg = segments[i];
-      // Hero & Allies freely pass gates
+      // Hero & Allies pass gates freely
       if (isHeroOrAlly && (seg.type === "gate" || seg.isGate)) continue;
-      // When gate is breached, monsters can pass through gates too!
-      if (!isHeroOrAlly && this.gateBreached && (seg.type === "gate" || seg.isGate)) continue;
+
+      // When gate or checkpoint is breached, monsters can pass through!
+      if (!isHeroOrAlly && (seg.type === "gate" || seg.isGate)) {
+        if (seg.cpIndex && this.checkpoints && this.checkpoints[seg.cpIndex - 1] && this.checkpoints[seg.cpIndex - 1].breached) {
+          continue;
+        }
+        if (!seg.cpIndex && this.gateBreached) {
+          continue;
+        }
+      }
 
       var sx = seg.x2 - seg.x1;
       var sy = seg.y2 - seg.y1;
@@ -542,11 +587,7 @@ window.GameEngine = {
       var dist = Math.hypot(dx, dy);
 
       if (dist < r) {
-        if (dist < 0.001) {
-          dx = 0.65;
-          dy = 0.75;
-          dist = 1;
-        }
+        if (dist < 0.001) { dx = 1; dy = 0; dist = 1; }
         var overlap = r - dist;
         entity.x += (dx / dist) * overlap;
         entity.y += (dy / dist) * overlap;
@@ -560,8 +601,10 @@ window.GameEngine = {
       this.state.maxWaveReached = waveNum;
     }
     this.waveState.spawned = 0;
-    this.waveState.toSpawn = 16 + Math.min(50, Math.floor(waveNum * 2.2));
-    this.waveState.spawnTimer = 0.35;
+    // Stage 2 (canyon highway) has extra monster swarms as requested!
+    var extraHorde = (this.layoutType === "long_line_three_checkpoints") ? 14 : 0;
+    this.waveState.toSpawn = 16 + extraHorde + Math.min(50, Math.floor(waveNum * 2.2));
+    this.waveState.spawnTimer = 0.30;
     this.waveState.bossActive = (waveNum % 5 === 0);
     if (window.GameUI) window.GameUI.updateHUD();
   },
@@ -582,15 +625,9 @@ window.GameEngine = {
     var archId = forceBoss ? "realm_boss" : pool[Math.floor(Math.random() * pool.length)];
     var arch = window.GAME_DATA.bestiary.find(function(b) { return b.id === archId; }) || window.GAME_DATA.bestiary[0];
 
-    var roads = (window.GAME_DATA.mapConfig && window.GAME_DATA.mapConfig.roads) || [];
-    var roadIdx = 0;
-    if (w >= 3) {
-      roadIdx = Math.floor(Math.random() * roads.length);
-    } else {
-      roadIdx = Math.random() < 0.6 ? 0 : 1;
-    }
-    var road = roads[roadIdx] || roads[0];
-    var startPt = (road && road.waypoints && road.waypoints[0]) ? road.waypoints[0] : { x: 1980, y: 680 };
+    var roads = this.roads || [];
+    var road = roads[Math.floor(Math.random() * roads.length)] || roads[0];
+    var startPt = (road && road.waypoints && road.waypoints[0]) ? road.waypoints[0] : { x: this.width - 100, y: this.height * 0.5 };
 
     var hp = Math.round(45 * arch.hpMult * scale);
     var goldReward = Math.max(5, Math.round(arch.gold * realm.rewardMult * (1 + w * 0.12)));
@@ -601,15 +638,15 @@ window.GameEngine = {
       name: forceBoss ? realm.bossName : arch.name,
       icon: arch.icon,
       isBoss: !!forceBoss,
-      roadId: road ? road.id : "road_center",
-      waypoints: road ? road.waypoints : [{ x: 1980, y: 680 }, { x: 780, y: 435 }, { x: 250, y: 540 }],
+      roadId: road ? road.id : "road_main",
+      waypoints: road ? road.waypoints : [startPt, { x: 280, y: 750 }],
       wpIndex: 1,
-      laneOffset: (Math.random() - 0.5) * 36,
-      x: startPt.x + (Math.random() - 0.5) * 40,
-      y: startPt.y + (Math.random() - 0.5) * 40,
+      laneOffset: (Math.random() - 0.5) * 32,
+      x: startPt.x + (Math.random() - 0.5) * 35,
+      y: startPt.y + (Math.random() - 0.5) * 35,
       hp: hp,
       maxHp: hp,
-      speed: arch.spd * (0.94 + Math.random() * 0.12),
+      speed: arch.spd * (0.95 + Math.random() * 0.10),
       radius: forceBoss ? 36 : (arch.id === "orc_warrior" || arch.id === "stone_golem" ? 22 : 16),
       gold: goldReward,
       atkTimer: 0,
@@ -660,12 +697,12 @@ window.GameEngine = {
     var yieldMult = (1 + this.getTalentVal("t_mine_yield")) * this.getDivinityMult();
 
     if (mineLv > 0) {
-      var goldPerSec = mineLv * 4.2 * yieldMult * this.getCurrentRealm().rewardMult;
+      var goldPerSec = mineLv * 4.5 * yieldMult * this.getCurrentRealm().rewardMult;
       this.state.gold += goldPerSec * dt;
       this.state.totalGoldEarned += goldPerSec * dt;
     }
     if (wellLv > 0) {
-      var manaPerSec = wellLv * 0.55 * yieldMult;
+      var manaPerSec = wellLv * 0.60 * yieldMult;
       this.state.mana += manaPerSec * dt;
     }
 
@@ -675,8 +712,12 @@ window.GameEngine = {
       if (this.wall.hp < this.wall.maxHp && this.wall.hp > 0) {
         this.wall.hp = Math.min(this.wall.maxHp, this.wall.hp + this.wall.maxHp * regenRate * dt);
       }
-      if (this.townHall.hp < this.townHall.maxHp && this.townHall.hp > 0) {
-        this.townHall.hp = Math.min(this.townHall.maxHp, this.townHall.hp + this.townHall.maxHp * (regenRate * 0.7) * dt);
+      if (this.halls) {
+        this.halls.forEach(function(h) {
+          if (h.hp < h.maxHp && h.hp > 0) {
+            h.hp = Math.min(h.maxHp, h.hp + h.maxHp * (regenRate * 0.7) * dt);
+          }
+        });
       }
     }
 
@@ -756,7 +797,7 @@ window.GameEngine = {
 
   clampHeroPosition: function() {
     this.hero.x = Math.max(60, Math.min(this.width - 60, this.hero.x));
-    this.hero.y = Math.max(95, Math.min(this.height - 75, this.hero.y));
+    this.hero.y = Math.max(90, Math.min(this.height - 75, this.hero.y));
   },
 
   computeAiTarget: function() {
@@ -764,7 +805,7 @@ window.GameEngine = {
     if (this.aiMode === 2) {
       var bestPad = null;
       var bestScore = Infinity;
-      window.GAME_DATA.groundPads.forEach(function(p) {
+      (window.GAME_DATA.groundPads || []).forEach(function(p) {
         if (self.state.unlockedZones.indexOf(p.zone) === -1) return;
         var st = self.state.pads[p.id];
         if (!st || st.level >= p.maxLevel) return;
@@ -795,8 +836,8 @@ window.GameEngine = {
 
     if (this.enemies.length > 0) {
       var en = this.enemies[0];
-      this.hero.targetX = Math.max(250, Math.min(1850, en.x - 95));
-      this.hero.targetY = Math.max(200, Math.min(1250, en.y));
+      this.hero.targetX = Math.max(250, Math.min(this.width - 250, en.x - 90));
+      this.hero.targetY = Math.max(150, Math.min(this.height - 150, en.y));
     }
   },
 
@@ -804,9 +845,10 @@ window.GameEngine = {
     var self = this;
     var activePad = null;
 
-    window.GAME_DATA.groundPads.forEach(function(pad) {
+    (window.GAME_DATA.groundPads || []).forEach(function(pad) {
       if (self.state.unlockedZones.indexOf(pad.zone) === -1) return;
       var st = self.state.pads[pad.id];
+      if (!st) return;
       if (st.cooldown && st.cooldown > 0) {
         st.cooldown = Math.max(0, st.cooldown - dt);
       }
@@ -814,6 +856,8 @@ window.GameEngine = {
       var dist = Math.hypot(self.hero.x - pad.x, self.hero.y - pad.y);
       if (dist < 56) {
         activePad = pad;
+        // If pad is customizable and unbuilt (level == 0), hero stands on it to pour build coins
+        // If already built (level >= 1), pours coins to upgrade!
         if (st.level < pad.maxLevel && (!st.cooldown || st.cooldown <= 0)) {
           var cost = self.getPadCost(pad);
           var needed = cost - st.invested;
@@ -832,7 +876,7 @@ window.GameEngine = {
               }
               st.invested += stepAmt;
 
-              if (Math.random() < 0.68) {
+              if (Math.random() < 0.65) {
                 self.spawnFlyingCoin(self.hero.x, self.hero.y - 16, pad.x, pad.y - 10, pad.currency);
                 window.SoundEngine.playCoinFeed();
               }
@@ -840,6 +884,10 @@ window.GameEngine = {
               if (st.invested >= cost - 0.01) {
                 st.invested = 0;
                 st.level += 1;
+                // If it was Lv 0 customizable pad, lock its blueprint now!
+                if (pad.customizable && !st.blueprintId) {
+                  st.blueprintId = pad.defaultBlueprint || "bp_arcane_spire";
+                }
                 self.executePadActivation(pad, st);
               }
             }
@@ -872,14 +920,13 @@ window.GameEngine = {
       this.recalcWallStats(false);
       this.townHall.hp = Math.min(this.townHall.maxHp, this.townHall.hp + Math.round(this.townHall.maxHp * 0.45));
       this.addFloatingText(pad.x, pad.y - 45, "🏛️ 大本營升級 Lv." + st.level + "！", "#fde047", 18);
-      if (window.GameUI) window.GameUI.showToast("🏛️ 守護大本營已升級至 Lv." + st.level + "！生命大幅提升！");
     } else if (pad.type === "expand") {
       window.SoundEngine.playExpand();
       if (this.state.unlockedZones.indexOf(pad.unlocksZone) === -1) {
         this.state.unlockedZones.push(pad.unlocksZone);
       }
-      this.addFloatingText(pad.x, pad.y - 40, "🔓 領地擴張！", "#fde047", 20);
-      if (window.GameUI) window.GameUI.showToast("✨ 成功擴建領地：" + pad.name + "！");
+      this.addFloatingText(pad.x, pad.y - 40, "🔓 領地擴建！", "#fde047", 20);
+      if (window.GameUI) window.GameUI.showToast("✨ 成功解鎖防線：" + pad.name + "！");
     } else if (pad.type === "wall") {
       window.SoundEngine.playUpgradeComplete();
       this.recalcWallStats(false);
@@ -890,18 +937,17 @@ window.GameEngine = {
       window.SoundEngine.playUpgradeComplete();
       this.state.heroWeaponForgeLv += 1;
       this.spawnLootDrop(pad.x + (Math.random() - 0.5) * 55, pad.y + 35, "chest", 1);
-      this.addFloatingText(pad.x, pad.y - 35, "⚒️ 鍛造成功！掉落寶箱", "#f43f5e", 16);
+      this.addFloatingText(pad.x, pad.y - 35, "⚒️ 鍛造聖物寶箱！", "#f43f5e", 16);
     } else if (pad.type === "shrine") {
       window.SoundEngine.playSkill();
       st.cooldown = 12;
       this.triggerCataclysm(true);
-      this.addFloatingText(pad.x, pad.y - 40, "🌋 天罰神龕：太古流星雨！", "#f97316", 18);
+      this.addFloatingText(pad.x, pad.y - 40, "🌋 天罰流星火雨！", "#f97316", 18);
     } else if (pad.type === "portal") {
       window.SoundEngine.playExpand();
       st.cooldown = 15;
       this.spawnEnemy(true);
       this.addFloatingText(pad.x, pad.y - 40, "⛩️ 遠古魔王降臨！", "#a855f7", 18);
-      if (window.GameUI) window.GameUI.showToast("🐲 魔王降臨戰場！");
     } else {
       window.SoundEngine.playUpgradeComplete();
       var bp = pad.customizable ? this.getPadBlueprint(pad) : null;
@@ -914,7 +960,10 @@ window.GameEngine = {
     }
 
     this.checkQuestProgress();
-    if (window.GameUI) window.GameUI.updateHUD();
+    if (window.GameUI) {
+      window.GameUI.updateHUD();
+      window.GameUI.updateContextCard();
+    }
   },
 
   updateHeroAndTowersCombat: function(dt) {
@@ -934,19 +983,25 @@ window.GameEngine = {
       }
     }
 
-    // Town Hall Defensive Sacred Ballista (If enemies get close to inner courtyard)
-    this.townHall.atkTimer = (this.townHall.atkTimer || 0) - dt;
-    if (this.townHall.atkTimer <= 0 && this.enemies.length > 0) {
-      var closeEnemy = this.findNearestEnemy(this.townHall.x, this.townHall.y, 650);
-      if (closeEnemy) {
-        this.townHall.atkTimer = 0.95;
-        var hallDmg = Math.round(this.getHeroDamage() * 1.4);
-        this.fireProjectile(this.townHall.x, this.townHall.y - 35, closeEnemy, "ballista", hallDmg, "#fde047");
-      }
+    // All Active Halls (Main Citadel + Outpost) Fire Ballista
+    if (this.halls) {
+      this.halls.forEach(function(h) {
+        if (h.hp > 0 && self.enemies.length > 0) {
+          h.atkTimer = (h.atkTimer || 0) - dt;
+          if (h.atkTimer <= 0) {
+            var closeEnemy = self.findNearestEnemy(h.x, h.y, 620);
+            if (closeEnemy) {
+              h.atkTimer = 0.90;
+              var ballistaDmg = Math.round(self.getHeroDamage() * 1.35);
+              self.fireProjectile(h.x, h.y - 35, closeEnemy, "ballista", ballistaDmg, "#fde047");
+            }
+          }
+        }
+      });
     }
 
-    // Customizable Plots & Towers
-    window.GAME_DATA.groundPads.forEach(function(pad) {
+    // Customizable Built Towers & Barracks (Level >= 1)
+    (window.GAME_DATA.groundPads || []).forEach(function(pad) {
       var st = self.state.pads[pad.id];
       if (!st || st.level <= 0) return;
 
@@ -1029,8 +1084,8 @@ window.GameEngine = {
       this.projectiles.push({
         x: sx,
         y: sy,
-        vx: Math.cos(a) * 530,
-        vy: Math.sin(a) * 530,
+        vx: Math.cos(a) * 540,
+        vy: Math.sin(a) * 540,
         kind: kind,
         dmg: dmg,
         color: color,
@@ -1084,14 +1139,6 @@ window.GameEngine = {
           } else {
             this.collectLootDrop(0);
           }
-        } else {
-          var hx = 220 - al.x;
-          var hy = 300 - al.y;
-          var hd = Math.hypot(hx, hy);
-          if (hd > 30) {
-            al.x += (hx / hd) * al.speed * 0.6 * dt;
-            al.y += (hy / hd) * al.speed * 0.6 * dt;
-          }
         }
         continue;
       }
@@ -1104,7 +1151,7 @@ window.GameEngine = {
         }
       }
 
-      var target = this.findNearestEnemy(al.x, al.y, 1300);
+      var target = this.findNearestEnemy(al.x, al.y, 1400);
       if (target) {
         var movePt = this.getSmartMovePoint(al.x, al.y, target.x, target.y);
         var ex = movePt.x - al.x;
@@ -1131,21 +1178,13 @@ window.GameEngine = {
             }
           }
         }
-      } else {
-        var patrolPt = this.getSmartMovePoint(al.x, al.y, 920, 620);
-        var px = patrolPt.x - al.x;
-        var py = patrolPt.y - al.y;
-        var pd = Math.hypot(px, py);
-        if (pd > 45) {
-          al.x += (px / pd) * al.speed * 0.65 * dt;
-          al.y += (py / pd) * al.speed * 0.65 * dt;
-        }
       }
 
       this.resolveWallCollisions(al, true);
     }
   },
 
+  // Monster movement and siege progression based on stage layout
   updateEnemies: function(dt) {
     if (this.waveState.spawned < this.waveState.toSpawn) {
       this.waveState.spawnTimer -= dt;
@@ -1153,7 +1192,7 @@ window.GameEngine = {
         var isLastAndBoss = (this.waveState.spawned === this.waveState.toSpawn - 1) && this.waveState.bossActive;
         this.spawnEnemy(isLastAndBoss);
         this.waveState.spawned++;
-        this.waveState.spawnTimer = Math.max(0.25, 0.75 - this.state.wave * 0.012);
+        this.waveState.spawnTimer = Math.max(0.22, 0.70 - this.state.wave * 0.012);
       }
     } else if (this.enemies.length === 0) {
       this.waveState.waveClearTimer += dt;
@@ -1168,15 +1207,12 @@ window.GameEngine = {
       }
     }
 
-    // Tally road enemy counts for the live radar
-    var rNorth = 0, rCenter = 0, rSouth = 0;
+    var counts = { road_north: 0, road_center: 0, road_south: 0, road_main: 0, road_long: 0, road_east: 0, road_west: 0 };
     for (var k = 0; k < this.enemies.length; k++) {
       var rId = this.enemies[k].roadId;
-      if (rId === "road_north") rNorth++;
-      else if (rId === "road_center") rCenter++;
-      else if (rId === "road_south") rSouth++;
+      if (counts[rId] !== undefined) counts[rId]++;
     }
-    this.roadEnemyCounts = { road_north: rNorth, road_center: rCenter, road_south: rSouth };
+    this.roadEnemyCounts = counts;
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];
@@ -1223,90 +1259,213 @@ window.GameEngine = {
         continue;
       }
 
-      // If gates are intact, march toward the nearest gate
-      // If gates are breached (wall.hp <= 0), march directly to Town Hall!
-      var destX, destY;
-      var wps = e.waypoints || [{ x: 780, y: 435 }, { x: 250, y: 540 }];
+      // Siege progression by stage layout:
+      if (this.layoutType === "long_line_three_checkpoints") {
+        // Stage 2: Long canyon road with 3 checkpoints
+        var cp1 = this.checkpoints[0];
+        var cp2 = this.checkpoints[1];
+        var cp3 = this.checkpoints[2];
+        var targetX = 260; // Town hall
 
-      if (!this.gateBreached) {
-        var wpIdx = Math.min(wps.length - 2, e.wpIndex || 0);
-        var wp = wps[wpIdx];
-        destX = wp.x;
-        destY = wp.y + (wpIdx < wps.length - 2 ? (e.laneOffset || 0) : 0);
-
-        var dx = destX - e.x;
-        var dy = destY - e.y;
-        var distToWp = Math.hypot(dx, dy);
-
-        if (wpIdx < wps.length - 2 && distToWp < 42) {
-          e.wpIndex = wpIdx + 1;
-        }
-
-        // Distance to wall line
-        var wx = this.wall.x2 - this.wall.x1;
-        var wy = this.wall.y2 - this.wall.y1;
-        var wLen2 = wx * wx + wy * wy;
-        var t = Math.max(0.05, Math.min(0.95, ((e.x - this.wall.x1) * wx + (e.y - this.wall.y1) * wy) / wLen2));
-        var wallPtX = this.wall.x1 + t * wx;
-        var wallPtY = this.wall.y1 + t * wy;
-        var distToWall = Math.hypot(e.x - wallPtX, e.y - wallPtY);
-
-        if (distToWall > e.radius + 26) {
-          if (distToWp > 1) {
-            e.x += (dx / distToWp) * e.speed * spdMult * dt;
-            e.y += (dy / distToWp) * e.speed * spdMult * dt;
+        if (!cp1.breached) {
+          targetX = cp1.x + e.radius + 18;
+          if (e.x > targetX) {
+            e.x -= e.speed * spdMult * dt;
+          } else {
+            // Attack Checkpoint 1
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 1.0;
+              var dmg = Math.max(8, Math.round(15 * this.getCurrentRealm().enemyMult * (e.isBoss ? 3.5 : 1)));
+              cp1.hp = Math.max(0, cp1.hp - dmg);
+              if (cp1.hp <= 0) {
+                cp1.breached = true;
+                this.addFloatingText(e.x, e.y - 30, "💥 第一道關卡被攻破！", "#ef4444", 18);
+              }
+            }
+          }
+        } else if (!cp2.breached) {
+          targetX = cp2.x + e.radius + 18;
+          if (e.x > targetX) {
+            e.x -= e.speed * spdMult * dt;
+          } else {
+            // Attack Checkpoint 2
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 1.0;
+              var dmg2 = Math.max(10, Math.round(18 * this.getCurrentRealm().enemyMult * (e.isBoss ? 3.5 : 1)));
+              cp2.hp = Math.max(0, cp2.hp - dmg2);
+              if (cp2.hp <= 0) {
+                cp2.breached = true;
+                this.addFloatingText(e.x, e.y - 30, "💥 第二道關卡被攻破！", "#ef4444", 18);
+              }
+            }
+          }
+        } else if (!cp3.breached) {
+          targetX = cp3.x + e.radius + 18;
+          if (e.x > targetX) {
+            e.x -= e.speed * spdMult * dt;
+          } else {
+            // Attack Checkpoint 3
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 1.0;
+              var dmg3 = Math.max(12, Math.round(20 * this.getCurrentRealm().enemyMult * (e.isBoss ? 3.5 : 1)));
+              cp3.hp = Math.max(0, cp3.hp - dmg3);
+              if (cp3.hp <= 0) {
+                cp3.breached = true;
+                this.gateBreached = true;
+                this.addFloatingText(e.x, e.y - 30, "🚨 王城內閘失守！魔物突入大本營！", "#ef4444", 20);
+              }
+            }
           }
         } else {
-          // Attacking the Wall & Gates
-          e.atkTimer -= dt;
-          if (e.atkTimer <= 0) {
-            e.atkTimer = 1.0;
-            var eDmg = Math.max(8, Math.round(14 * this.getCurrentRealm().enemyMult * Math.pow(1.09, this.state.wave - 1)));
-            if (e.isBoss) eDmg *= 3.5;
-            this.wall.hp = Math.max(0, this.wall.hp - eDmg);
-
-            var thornsRatio = this.getTalentVal("t_wall_thorns") + ((this.state.pads["pad_WallFortify"] && this.state.pads["pad_WallFortify"].level) || 0) * 0.15;
-            if (thornsRatio > 0) {
-              this.damageEnemy(e, Math.round(this.getHeroDamage() * thornsRatio), "#38bdf8", false);
+          // Checkpoints breached! Attack Town Hall!
+          var hdist = Math.hypot(this.townHall.x - e.x, this.townHall.y - e.y);
+          if (hdist > e.radius + this.townHall.radius + 10) {
+            var hdx = this.townHall.x - e.x;
+            var hdy = this.townHall.y - e.y;
+            e.x += (hdx / hdist) * e.speed * spdMult * dt;
+            e.y += (hdy / hdist) * e.speed * spdMult * dt;
+          } else {
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 0.95;
+              var hDmg = Math.max(14, Math.round(22 * this.getCurrentRealm().enemyMult * (e.isBoss ? 4 : 1)));
+              this.townHall.hp = Math.max(0, this.townHall.hp - hDmg);
+              this.townHall.flashTimer = 0.14;
+              if (this.townHall.hp <= 0) {
+                this.townHall.hp = 0;
+                this.triggerDefeat();
+                return;
+              }
             }
+          }
+        }
+      } else if (this.layoutType === "multiple_halls_outpost") {
+        // Stage 4: Outpost Keep -> Main Citadel
+        var outpost = this.halls.find(function(h) { return h.isOutpost; });
+        var mainKeep = this.townHall;
 
-            if (this.wall.hp <= 0) {
-              this.wall.hp = 0;
-              this.gateBreached = true;
-              this.addFloatingText(e.x, e.y - 30, "🚨 城防失守！魔物突入大本營！", "#ef4444", 20);
-              if (window.GameUI) {
-                window.GameUI.showToast("🚨 警報：城門防線被攻破！魔物正突入大本營！");
+        if (outpost && outpost.hp > 0) {
+          // March toward outpost
+          var odist = Math.hypot(outpost.x - e.x, outpost.y - e.y);
+          if (odist > e.radius + outpost.radius + 10) {
+            var odx = outpost.x - e.x;
+            var ody = outpost.y - e.y;
+            e.x += (odx / odist) * e.speed * spdMult * dt;
+            e.y += (ody / odist) * e.speed * spdMult * dt;
+          } else {
+            // Attack Outpost!
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 0.95;
+              var oDmg = Math.max(12, Math.round(18 * this.getCurrentRealm().enemyMult * (e.isBoss ? 3.5 : 1)));
+              outpost.hp = Math.max(0, outpost.hp - oDmg);
+              if (outpost.hp <= 0) {
+                outpost.hp = 0;
+                this.addFloatingText(outpost.x, outpost.y - 40, "💥 前哨要塞被攻陷！", "#ef4444", 20);
+                if (window.GameUI) window.GameUI.showToast("🚨 前哨要塞失守！魔物正向王城主營推進！");
+              }
+            }
+          }
+        } else {
+          // Outpost fallen: March toward Main Citadel Keep
+          var mdist = Math.hypot(mainKeep.x - e.x, mainKeep.y - e.y);
+          if (mdist > e.radius + mainKeep.radius + 10) {
+            var mdx = mainKeep.x - e.x;
+            var mdy = mainKeep.y - e.y;
+            e.x += (mdx / mdist) * e.speed * spdMult * dt;
+            e.y += (mdy / mdist) * e.speed * spdMult * dt;
+          } else {
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 0.95;
+              var mDmg = Math.max(15, Math.round(22 * this.getCurrentRealm().enemyMult * (e.isBoss ? 4 : 1)));
+              mainKeep.hp = Math.max(0, mainKeep.hp - mDmg);
+              mainKeep.flashTimer = 0.14;
+              if (mainKeep.hp <= 0) {
+                mainKeep.hp = 0;
+                this.triggerDefeat();
+                return;
               }
             }
           }
         }
       } else {
-        // Gate is breached! March to Town Hall at (250, 540)
-        destX = this.townHall.x;
-        destY = this.townHall.y;
+        // Stage 1 & 3: Standard Gate attack -> Town Hall invasion
+        var wps = e.waypoints || [{ x: this.width - 100, y: 750 }, { x: 280, y: 750 }];
+        var destX, destY;
 
-        var distToHall = Math.hypot(destX - e.x, destY - e.y);
-        if (distToHall > e.radius + this.townHall.radius + 10) {
-          var hdx = destX - e.x;
-          var hdy = destY - e.y;
-          var hdist = Math.hypot(hdx, hdy);
-          e.x += (hdx / hdist) * e.speed * spdMult * dt;
-          e.y += (hdy / hdist) * e.speed * spdMult * dt;
+        if (!this.gateBreached) {
+          var wpIdx = Math.min(wps.length - 2, e.wpIndex || 0);
+          var wp = wps[wpIdx];
+          destX = wp.x;
+          destY = wp.y + (wpIdx < wps.length - 2 ? (e.laneOffset || 0) : 0);
+
+          var dx = destX - e.x;
+          var dy = destY - e.y;
+          var distToWp = Math.hypot(dx, dy);
+
+          if (wpIdx < wps.length - 2 && distToWp < 42) {
+            e.wpIndex = wpIdx + 1;
+          }
+
+          var gatePt = this.getNearestGatePoint(e.x, e.y);
+          var distToGate = Math.hypot(e.x - gatePt.x, e.y - gatePt.y);
+
+          if (distToGate > e.radius + 32) {
+            if (distToWp > 1) {
+              e.x += (dx / distToWp) * e.speed * spdMult * dt;
+              e.y += (dy / distToWp) * e.speed * spdMult * dt;
+            }
+          } else {
+            // Attacking Wall & Gate
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 1.0;
+              var eDmg = Math.max(8, Math.round(14 * this.getCurrentRealm().enemyMult * Math.pow(1.09, this.state.wave - 1)));
+              if (e.isBoss) eDmg *= 3.5;
+              this.wall.hp = Math.max(0, this.wall.hp - eDmg);
+
+              var thornsRatio = this.getTalentVal("t_wall_thorns");
+              if (thornsRatio > 0) {
+                this.damageEnemy(e, Math.round(this.getHeroDamage() * thornsRatio), "#38bdf8", false);
+              }
+
+              if (this.wall.hp <= 0) {
+                this.wall.hp = 0;
+                this.gateBreached = true;
+                this.addFloatingText(e.x, e.y - 30, "🚨 城門失守！魔物突入大本營！", "#ef4444", 20);
+                if (window.GameUI) window.GameUI.showToast("🚨 警報：城門被攻破！魔物突入大本營！");
+              }
+            }
+          }
         } else {
-          // Attacking Town Hall!
-          e.atkTimer -= dt;
-          if (e.atkTimer <= 0) {
-            e.atkTimer = 0.95;
-            var hDmg = Math.max(12, Math.round(18 * this.getCurrentRealm().enemyMult * Math.pow(1.09, this.state.wave - 1)));
-            if (e.isBoss) hDmg *= 4;
-            this.townHall.hp = Math.max(0, this.townHall.hp - hDmg);
-            this.townHall.flashTimer = 0.14;
-            this.spawnBurstParticles(this.townHall.x + (Math.random() - 0.5) * 35, this.townHall.y + (Math.random() - 0.5) * 35, "#ef4444", 8);
+          // Gate Breached: March to Town Hall
+          destX = this.townHall.x;
+          destY = this.townHall.y;
 
-            if (this.townHall.hp <= 0) {
-              this.townHall.hp = 0;
-              this.triggerDefeat();
-              return;
+          var distToHall = Math.hypot(destX - e.x, destY - e.y);
+          if (distToHall > e.radius + this.townHall.radius + 10) {
+            var hdx = destX - e.x;
+            var hdy = destY - e.y;
+            e.x += (hdx / distToHall) * e.speed * spdMult * dt;
+            e.y += (hdy / distToHall) * e.speed * spdMult * dt;
+          } else {
+            e.atkTimer -= dt;
+            if (e.atkTimer <= 0) {
+              e.atkTimer = 0.95;
+              var hDmg = Math.max(12, Math.round(18 * this.getCurrentRealm().enemyMult * Math.pow(1.09, this.state.wave - 1)));
+              if (e.isBoss) hDmg *= 4;
+              this.townHall.hp = Math.max(0, this.townHall.hp - hDmg);
+              this.townHall.flashTimer = 0.14;
+
+              if (this.townHall.hp <= 0) {
+                this.townHall.hp = 0;
+                this.triggerDefeat();
+                return;
+              }
             }
           }
         }
@@ -1328,6 +1487,7 @@ window.GameEngine = {
   reviveFromDefeat: function() {
     this.isDefeated = false;
     this.recalcWallStats(true);
+    var self = this;
     this.enemies.forEach(function(e) {
       e.x += 280;
       e.y += 140;
@@ -1337,7 +1497,7 @@ window.GameEngine = {
     window.SoundEngine.playSkill();
     if (window.GameUI) {
       window.GameUI.closeModal();
-      window.GameUI.showToast("✨ 聖光降臨！大本營與城防已完全復甦！");
+      window.GameUI.showToast("✨ 聖光復甦！大本營與城防已完全修復！");
       window.GameUI.updateHUD();
     }
   },
@@ -1624,9 +1784,13 @@ window.GameEngine = {
     } else if (sk.id === "aegis") {
       sk.buffTimer = 8.0;
       this.wall.hp = Math.min(this.wall.maxHp, this.wall.hp + Math.round(this.wall.maxHp * 0.45));
-      this.townHall.hp = Math.min(this.townHall.maxHp, this.townHall.hp + Math.round(this.townHall.maxHp * 0.40));
+      if (this.halls) {
+        this.halls.forEach(function(h) {
+          h.hp = Math.min(h.maxHp, h.hp + Math.round(h.maxHp * 0.40));
+        });
+      }
       this.gateBreached = false;
-      this.addFloatingText(this.hero.x, this.hero.y - 45, "🛡️ 聖光壁壘：大本營與城防修復！", "#fde047", 18);
+      this.addFloatingText(this.hero.x, this.hero.y - 45, "🛡️ 聖光壁壘：要塞修復！", "#fde047", 18);
     } else if (sk.id === "meteor") {
       this.triggerCataclysm(false);
     }
@@ -1635,8 +1799,8 @@ window.GameEngine = {
   triggerCataclysm: function(fromShrine) {
     var dmg = this.getHeroDamage() * (fromShrine ? 9.0 : 6.5);
     for (var m = 0; m < 12; m++) {
-      var mx = 650 + Math.random() * 1250;
-      var my = 200 + Math.random() * 980;
+      var mx = 450 + Math.random() * (this.width - 600);
+      var my = 200 + Math.random() * (this.height - 400);
       this.spawnBurstParticles(mx, my, "#38bdf8", 18);
       this.burnZones.push({ x: mx, y: my, radius: 85, dps: dmg * 0.25, life: 4.0 });
     }
@@ -1653,21 +1817,20 @@ window.GameEngine = {
     var done = false;
     var self = this;
 
-    if (q.type === "pad_lv") {
-      var st = this.state.pads[q.targetId];
-      if (st && st.level >= q.goal) done = true;
+    if (q.type === "any_tower_built") {
+      (window.GAME_DATA.groundPads || []).forEach(function(p) {
+        if (p.customizable && self.state.pads[p.id] && self.state.pads[p.id].level >= 1) done = true;
+      });
     } else if (q.type === "wave") {
       if (this.state.wave > q.goal) done = true;
     } else if (q.type === "zone") {
       if (this.state.unlockedZones.indexOf(q.goal) !== -1) done = true;
     } else if (q.type === "any_tower_lv") {
-      window.GAME_DATA.groundPads.forEach(function(p) {
-        if (p.customizable && self.state.pads[p.id] && self.state.pads[p.id].level >= q.goal) {
-          done = true;
-        }
+      (window.GAME_DATA.groundPads || []).forEach(function(p) {
+        if (p.customizable && self.state.pads[p.id] && self.state.pads[p.id].level >= q.goal) done = true;
       });
     } else if (q.type === "any_troop_built") {
-      window.GAME_DATA.groundPads.forEach(function(p) {
+      (window.GAME_DATA.groundPads || []).forEach(function(p) {
         if (p.customizable && self.state.pads[p.id] && self.state.pads[p.id].level >= q.goal) {
           var bp = self.getPadBlueprint(p);
           if (bp && bp.category === "barracks") done = true;
@@ -1696,31 +1859,37 @@ window.GameEngine = {
     this.state.wave = 1;
     this.state.gold = startGold;
     this.state.unlockedZones = [0];
+
+    // Load new map configuration for this realm
+    this.loadRealmMap(newRealmId);
+
+    // Initialize pads for this realm
     var self = this;
-    window.GAME_DATA.groundPads.forEach(function(p) {
-      var startLv = (p.id === "pad_FrostStatue" || p.id === "pad_HammerStatue" || p.id === "pad_TownHall") ? 1 : 0;
-      var prevBp = (self.state.pads[p.id] && self.state.pads[p.id].blueprintId) || p.defaultBlueprint || "bp_arcane_spire";
+    (window.GAME_DATA.groundPads || []).forEach(function(p) {
+      var startLv = (p.id === "pad_TownHall" || p.id === "pad_GateInner" || p.id === "pad_FrostStatue") ? 1 : 0;
+      var defaultBp = p.defaultBlueprint || "bp_arcane_spire";
       self.state.pads[p.id] = {
         level: startLv,
         invested: 0,
         cooldown: 0,
-        blueprintId: p.customizable ? prevBp : null,
+        blueprintId: p.customizable ? (startLv > 0 ? defaultBp : null) : null,
         atkTimer: 0
       };
     });
+
     this.enemies = [];
     this.projectiles = [];
     this.lootDrops = [];
     this.allies = [];
     this.burnZones = [];
-    this.hero.x = 560;
-    this.hero.y = 520;
     this.isDefeated = false;
     this.recalcWallStats(true);
     this.setupWave(1);
     this.saveGame();
+
     if (window.GameUI) {
       window.GameUI.updateHUD();
+      window.GameUI.updateContextCard();
       window.GameUI.showToast(isRebirth ? "✨ 轉生成功！神性加成已提升！" : "🗺️ 已進入：" + this.getCurrentRealm().name);
     }
   },
@@ -1796,7 +1965,6 @@ window.GameEngine = {
             this.state[k] = parsed[k];
           }
         }
-        this.initDefaultPads();
         var elapsedSec = Math.floor((Date.now() - (this.state.lastSaveTimestamp || Date.now())) / 1000);
         if (elapsedSec > 60) {
           var cappedSec = Math.min(elapsedSec, 36000);
@@ -1914,11 +2082,11 @@ window.GameEngine = {
     var ch = this.canvas.height;
     var realm = this.getCurrentRealm();
 
-    var scaleX = cw / 1350;
-    var scaleY = ch / 920;
+    var scaleX = cw / 1400;
+    var scaleY = ch / 950;
     var baseZoom = Math.max(scaleX, scaleY) * (this.camera.userZoomMult || 0.85);
     if (cw < 650) {
-      baseZoom = Math.max(0.56, baseZoom);
+      baseZoom = Math.max(0.55, baseZoom);
     }
     this.camera.zoom = baseZoom;
 
@@ -1936,12 +2104,12 @@ window.GameEngine = {
     ctx.translate(this.camera.x, this.camera.y);
     ctx.scale(this.camera.zoom, this.camera.zoom);
 
-    this.drawForestCourtyardAndThreeRoads(ctx, realm);
+    this.drawForestCourtyardAndRoads(ctx, realm);
     this.drawTerritoryBoundaries(ctx);
     this.drawDungeonGateAndBraziers(ctx);
     this.drawBurnZones(ctx);
-    this.drawRedesignedFortressWallAndGates(ctx, realm);
-    this.drawTownHall(ctx);
+    this.drawWallsAndGates(ctx, realm);
+    this.drawHalls(ctx);
     this.drawGroundLogosAndStatues(ctx);
     this.drawSceneryProps(ctx);
     this.drawLootDrops(ctx);
@@ -1962,7 +2130,7 @@ window.GameEngine = {
     }
   },
 
-  drawForestCourtyardAndThreeRoads: function(ctx, realm) {
+  drawForestCourtyardAndRoads: function(ctx, realm) {
     ctx.fillStyle = realm.grassDark || "#3e7533";
     for (var gx = 60; gx < this.width; gx += 140) {
       for (var gy = 80; gy < this.height; gy += 140) {
@@ -1972,21 +2140,8 @@ window.GameEngine = {
       }
     }
 
-    // Inner Courtyard
-    ctx.save();
-    ctx.fillStyle = "rgba(148, 163, 152, 0.24)";
-    ctx.beginPath();
-    ctx.moveTo(60, 60);
-    ctx.lineTo(940, 60);
-    ctx.lineTo(940, 165);
-    ctx.lineTo(185, 825);
-    ctx.lineTo(60, 825);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // 3 Roads
-    var roads = (window.GAME_DATA.mapConfig && window.GAME_DATA.mapConfig.roads) || [];
+    // Roads for active stage
+    var roads = this.roads || [];
     roads.forEach(function(road) {
       var wps = road.waypoints;
       if (!wps || wps.length < 2) return;
@@ -2019,57 +2174,28 @@ window.GameEngine = {
   drawDungeonGateAndBraziers: function(ctx) {
     var mineLv = (this.state.pads["pad_GoldMine"] && this.state.pads["pad_GoldMine"].level) || 0;
     var time = performance.now() * 0.006;
+    var padMine = (window.GAME_DATA.groundPads || []).find(function(p) { return p.type === "mine"; });
+    if (!padMine) return;
 
     ctx.save();
-    ctx.translate(215, 215);
+    ctx.translate(padMine.x - 30, padMine.y - 70);
 
     ctx.fillStyle = "#68736b";
     ctx.strokeStyle = "#1c1917";
     ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.roundRect(-75, -65, 150, 105, 10);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#94a398";
-    ctx.beginPath();
-    ctx.roundRect(-75, -65, 150, 28, 8);
+    ctx.roundRect(-60, -50, 120, 85, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = "#0f172a";
     ctx.beginPath();
-    ctx.arc(0, -10, 32, Math.PI, 0, false);
-    ctx.lineTo(32, 40);
-    ctx.lineTo(-32, 40);
+    ctx.arc(0, -5, 26, Math.PI, 0, false);
+    ctx.lineTo(26, 35);
+    ctx.lineTo(-26, 35);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
-    ctx.fillStyle = "#8c968e";
-    ctx.fillRect(-44, 36, 88, 12);
-    ctx.strokeRect(-44, 36, 88, 12);
-
-    [-62, 62].forEach(function(bx) {
-      ctx.fillStyle = "#78716c";
-      ctx.fillRect(bx - 12, -10, 24, 38);
-      ctx.strokeRect(bx - 12, -10, 24, 38);
-      ctx.fillStyle = "#92400e";
-      ctx.beginPath();
-      ctx.arc(bx, -12, 15, 0, Math.PI, false);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      var flicker = Math.sin(time + bx) * 3;
-      ctx.fillStyle = "#f97316";
-      ctx.beginPath();
-      ctx.arc(bx, -18, 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fde047";
-      ctx.beginPath();
-      ctx.arc(bx + flicker * 0.4, -22, 7, 0, Math.PI * 2);
-      ctx.fill();
-    });
 
     ctx.fillStyle = "#fde047";
     ctx.font = "900 11px Inter, sans-serif";
@@ -2077,18 +2203,17 @@ window.GameEngine = {
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
     var txt = mineLv > 0 ? "🔥 地下金庫 Lv." + mineLv : "🔥 地下金庫";
-    ctx.strokeText(txt, 0, -46);
-    ctx.fillText(txt, 0, -46);
+    ctx.strokeText(txt, 0, -35);
+    ctx.fillText(txt, 0, -35);
 
     ctx.restore();
   },
 
-  // 2.5D Grand Castle Ramparts & Gatehouses
-  drawRedesignedFortressWallAndGates: function(ctx, realm) {
+  drawWallsAndGates: function(ctx, realm) {
     var wallLv = (this.state.pads["pad_WallFortify"] && this.state.pads["pad_WallFortify"].level) || 0;
     var hpPct = Math.max(0, Math.min(1, this.wall.hp / this.wall.maxHp));
-    var segments = (window.GAME_DATA.mapConfig && window.GAME_DATA.mapConfig.wallSegments) || [];
-    var turrets = (window.GAME_DATA.mapConfig && window.GAME_DATA.mapConfig.bastionTurrets) || [];
+    var segments = this.wallSegments || [];
+    var turrets = this.bastionTurrets || [];
     var self = this;
 
     var wallBaseCol = wallLv >= 25 ? "#b45309" : (wallLv >= 10 ? "#334155" : "#4a544c");
@@ -2106,33 +2231,6 @@ window.GameEngine = {
     turrets.forEach(function(t) {
       self.drawBastionTurret(ctx, t.x, t.y, wallLv, wallBaseCol, wallTopCol, trimCol);
     });
-
-    // Wall HP Floating Bar
-    var midX = 590;
-    var midY = 475;
-    ctx.save();
-    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-    ctx.strokeStyle = this.gateBreached ? "#ef4444" : "#22c55e";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(midX - 95, midY - 14, 190, 24, 12);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = this.gateBreached ? "#ef4444" : (hpPct > 0.4 ? "#22c55e" : "#f59e0b");
-    ctx.beginPath();
-    ctx.roundRect(midX - 91, midY - 10, 182 * hpPct, 16, 8);
-    ctx.fill();
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "900 10.5px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 3;
-    var hpStr = (this.gateBreached ? "🚨 城門已破！" : "🏰 城防要塞 ") + "(" + Math.ceil(this.wall.hp) + "/" + this.wall.maxHp + ")";
-    ctx.strokeText(hpStr, midX, midY + 2);
-    ctx.fillText(hpStr, midX, midY + 2);
-    ctx.restore();
   },
 
   drawSolidRampartSegment: function(ctx, seg, baseCol, topCol, trimCol, hpPct) {
@@ -2164,13 +2262,6 @@ window.GameEngine = {
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(15, 23, 42, 0.48)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-22, -6); ctx.lineTo(22, -6);
-      ctx.moveTo(-22, 10); ctx.lineTo(22, 10);
-      ctx.stroke();
-
       ctx.fillStyle = topCol;
       ctx.strokeStyle = "#141416";
       ctx.lineWidth = 3;
@@ -2178,31 +2269,6 @@ window.GameEngine = {
       ctx.roundRect(-26, -28, 52, 20, 5);
       ctx.fill();
       ctx.stroke();
-
-      ctx.fillStyle = topCol;
-      ctx.beginPath();
-      ctx.roundRect(-14, -38, 28, 14, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(-2, -35, 4, 8);
-
-      ctx.fillStyle = trimCol;
-      ctx.beginPath();
-      ctx.arc(-8, -14, 4, 0, Math.PI * 2);
-      ctx.arc(8, -14, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (hpPct < 0.65 && s % 2 === 1) {
-        ctx.strokeStyle = "#0f172a";
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(-8, -18);
-        ctx.lineTo(2, -4);
-        ctx.lineTo(-4, 12);
-        ctx.stroke();
-      }
 
       ctx.restore();
     }
@@ -2217,13 +2283,16 @@ window.GameEngine = {
     var wallAng = Math.atan2(dy, dx);
     var time = performance.now() * 0.004;
 
+    var isGateBreached = this.gateBreached;
+    if (seg.cpIndex && this.checkpoints && this.checkpoints[seg.cpIndex - 1]) {
+      isGateBreached = this.checkpoints[seg.cpIndex - 1].breached;
+    }
+
     ctx.save();
     ctx.translate(midX, midY);
-
-    // Roadbed through gate
-    ctx.save();
     ctx.rotate(wallAng);
 
+    // Roadbed through gate
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.fillRect(-gateLen * 0.5 - 6, -35, gateLen + 12, 70);
 
@@ -2234,10 +2303,10 @@ window.GameEngine = {
     ctx.fillStyle = roadGrad;
     ctx.fillRect(-gateLen * 0.5, -32, gateLen, 64);
 
-    // Green arrows if open, red warning if breached
+    // Green passing arrows
     var arrowPhase = (time * 3) % 1;
-    ctx.fillStyle = this.gateBreached ? "rgba(239, 68, 68, 0.85)" : "rgba(34, 197, 94, 0.75)";
-    ctx.strokeStyle = this.gateBreached ? "#f87171" : "#4ade80";
+    ctx.fillStyle = isGateBreached ? "rgba(239, 68, 68, 0.85)" : "rgba(34, 197, 94, 0.75)";
+    ctx.strokeStyle = isGateBreached ? "#f87171" : "#4ade80";
     ctx.lineWidth = 2.5;
 
     for (var a = -2; a <= 2; a++) {
@@ -2251,50 +2320,9 @@ window.GameEngine = {
         ctx.stroke();
       }
     }
-    ctx.restore();
-
-    // Twin Guard Towers
-    var pierBaseCol = wallLv >= 25 ? "#b45309" : (wallLv >= 10 ? "#334155" : "#4c554e");
-    var pierTopCol = wallLv >= 25 ? "#fde047" : (wallLv >= 10 ? "#93c5fd" : "#8c968e");
-
-    [-gateLen * 0.5, gateLen * 0.5].forEach(function(pxOffset, idx) {
-      ctx.save();
-      ctx.rotate(wallAng);
-      ctx.translate(pxOffset, 0);
-
-      ctx.fillStyle = pierBaseCol;
-      ctx.strokeStyle = "#141416";
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.roundRect(-22, -28, 44, 56, 8);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = pierTopCol;
-      ctx.beginPath();
-      ctx.roundRect(-25, -38, 50, 18, 5);
-      ctx.fill();
-      ctx.stroke();
-
-      var bannerCol = idx === 0 ? "#2563eb" : "#dc2626";
-      ctx.fillStyle = bannerCol;
-      ctx.beginPath();
-      ctx.moveTo(-7, -26);
-      ctx.lineTo(7, -26);
-      ctx.lineTo(7, 16);
-      ctx.lineTo(0, 24);
-      ctx.lineTo(-7, 16);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.restore();
-    });
 
     // Archway & Portcullis
-    ctx.save();
-    ctx.rotate(wallAng);
-    ctx.fillStyle = pierTopCol;
+    ctx.fillStyle = "#8c968e";
     ctx.strokeStyle = "#141416";
     ctx.lineWidth = 3.5;
     ctx.beginPath();
@@ -2302,36 +2330,20 @@ window.GameEngine = {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = "#f59e0b";
-    ctx.fillRect(-10, -56, 20, 24);
-    ctx.strokeRect(-10, -56, 20, 24);
-
-    // Portcullis: Raised if open, broken/shattered if breached
-    ctx.strokeStyle = this.gateBreached ? "#ef4444" : "#0f172a";
-    ctx.lineWidth = 3;
-    var portY = this.gateBreached ? 0 : -24;
-    for (var gx = -gateLen * 0.5 + 24; gx <= gateLen * 0.5 - 24; gx += 16) {
-      ctx.beginPath();
-      ctx.moveTo(gx, -48);
-      ctx.lineTo(gx, portY);
-      ctx.stroke();
-    }
-
     ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-    ctx.strokeStyle = this.gateBreached ? "#ef4444" : "#22c55e";
+    ctx.strokeStyle = isGateBreached ? "#ef4444" : "#22c55e";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(-60, -78, 120, 20, 6);
+    ctx.roundRect(-65, -80, 130, 20, 6);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = this.gateBreached ? "#f87171" : "#4ade80";
+    ctx.fillStyle = isGateBreached ? "#f87171" : "#4ade80";
     ctx.font = "900 10.5px Inter, sans-serif";
     ctx.textAlign = "center";
-    var gateName = (seg.id === "gate_north" ? "⛩️ 北城門" : "⛩️ 南城門") + (this.gateBreached ? " (失守)" : " (通衢)");
-    ctx.fillText(gateName, 0, -64);
+    var gateName = (seg.name || "城門") + (isGateBreached ? " (已破)" : " (通衢)");
+    ctx.fillText(gateName, 0, -66);
 
-    ctx.restore();
     ctx.restore();
   },
 
@@ -2365,9 +2377,15 @@ window.GameEngine = {
     ctx.restore();
   },
 
-  // ================= 2.5D TOWN HALL (大本營) =================
-  drawTownHall: function(ctx) {
-    var h = this.townHall;
+  // Draw All Halls (Main Citadel Keep + Outposts)
+  drawHalls: function(ctx) {
+    var self = this;
+    (this.halls || []).forEach(function(h) {
+      self.drawIndividualHall(ctx, h);
+    });
+  },
+
+  drawIndividualHall: function(ctx, h) {
     var hallLv = (this.state.pads["pad_TownHall"] && this.state.pads["pad_TownHall"].level) || 1;
     var hpPct = Math.max(0, Math.min(1, h.hp / h.maxHp));
     var time = performance.now() * 0.005;
@@ -2378,151 +2396,64 @@ window.GameEngine = {
     // Ground Shadow
     ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
     ctx.beginPath();
-    ctx.ellipse(0, 22, 75, 36, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 22, h.radius * 1.5, h.radius * 0.75, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Battered Stone Plinth / Steps
+    // Plinth
     ctx.fillStyle = "#334155";
     ctx.strokeStyle = "#0f172a";
     ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.roundRect(-65, -35, 130, 68, 10);
+    ctx.roundRect(-h.radius * 1.3, -28, h.radius * 2.6, 56, 10);
     ctx.fill();
     ctx.stroke();
 
-    // Steps
-    ctx.fillStyle = "#64748b";
-    ctx.fillRect(-28, 22, 56, 14);
-    ctx.strokeRect(-28, 22, 56, 14);
-
-    // Main Keep Body
-    ctx.fillStyle = h.flashTimer > 0 ? "#ffffff" : "#475569";
+    // Body
+    ctx.fillStyle = h.flashTimer > 0 ? "#ffffff" : (h.isOutpost ? "#57534e" : "#475569");
     ctx.beginPath();
-    ctx.roundRect(-52, -72, 104, 82, 8);
+    ctx.roundRect(-h.radius, -68, h.radius * 2, 70, 8);
     ctx.fill();
     ctx.stroke();
 
-    // Ashlar grooves
-    ctx.strokeStyle = "rgba(15, 23, 42, 0.4)";
-    ctx.lineWidth = 2;
+    // Spire
+    ctx.fillStyle = h.isOutpost ? "#b45309" : "#1d4ed8";
     ctx.beginPath();
-    ctx.moveTo(-50, -45); ctx.lineTo(50, -45);
-    ctx.moveTo(-50, -18); ctx.lineTo(50, -18);
-    ctx.stroke();
-
-    // 4 Corner Turrets
-    [[-48, -75], [48, -75], [-48, 0], [48, 0]].forEach(function(pos) {
-      ctx.fillStyle = "#334155";
-      ctx.beginPath();
-      ctx.roundRect(pos[0] - 12, pos[1] - 18, 24, 36, 5);
-      ctx.fill();
-      ctx.stroke();
-
-      // Turret blue roofs
-      ctx.fillStyle = "#1e3a8a";
-      ctx.beginPath();
-      ctx.moveTo(pos[0] - 14, pos[1] - 18);
-      ctx.lineTo(pos[0], pos[1] - 42);
-      ctx.lineTo(pos[0] + 14, pos[1] - 18);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Gold tip
-      ctx.fillStyle = "#fde047";
-      ctx.beginPath();
-      ctx.arc(pos[0], pos[1] - 44, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Central Grand Belfry / Clock Tower
-    ctx.fillStyle = "#475569";
-    ctx.beginPath();
-    ctx.roundRect(-24, -112, 48, 45, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    // Arched Belfry windows
-    ctx.fillStyle = "#0f172a";
-    ctx.beginPath();
-    ctx.arc(0, -90, 8, Math.PI, 0, false);
-    ctx.lineTo(8, -78);
-    ctx.lineTo(-8, -78);
-    ctx.closePath();
-    ctx.fill();
-
-    // Central Roof Spire
-    ctx.fillStyle = "#1d4ed8";
-    ctx.beginPath();
-    ctx.moveTo(-26, -112);
-    ctx.lineTo(0, -156);
-    ctx.lineTo(26, -112);
+    ctx.moveTo(-h.radius * 0.5, -68);
+    ctx.lineTo(0, -118);
+    ctx.lineTo(h.radius * 0.5, -68);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Waving Royal Banner Flag
+    // Banner Flag
     var flagWave = Math.sin(time * 4) * 4;
     ctx.strokeStyle = "#78350f";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(0, -156);
-    ctx.lineTo(0, -185);
+    ctx.moveTo(0, -118);
+    ctx.lineTo(0, -145);
     ctx.stroke();
 
-    ctx.fillStyle = "#dc2626";
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = h.isOutpost ? "#f59e0b" : "#dc2626";
     ctx.beginPath();
-    ctx.moveTo(0, -185);
-    ctx.lineTo(26 + flagWave, -175);
-    ctx.lineTo(0, -165);
+    ctx.moveTo(0, -145);
+    ctx.lineTo(22 + flagWave, -137);
+    ctx.lineTo(0, -129);
     ctx.closePath();
     ctx.fill();
-    ctx.stroke();
 
-    // Arched Entrance Doors
-    ctx.fillStyle = "#78350f";
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(0, 8, 16, Math.PI, 0, false);
-    ctx.lineTo(16, 28);
-    ctx.lineTo(-16, 28);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Glowing Sacred Sun-Shield
-    var shieldPulse = 1 + Math.sin(time * 3) * 0.08;
-    ctx.save();
-    ctx.translate(0, -42);
-    ctx.scale(shieldPulse, shieldPulse);
-    ctx.fillStyle = "#fbbf24";
-    ctx.strokeStyle = "#fef08a";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#78350f";
-    ctx.font = "bold 11px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("⚜", 0, 4);
-    ctx.restore();
-
-    // Floating HP Bar & Label above Town Hall
+    // Floating HP Bar & Title
     ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = h.isOutpost ? "#f59e0b" : "#fbbf24";
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.roundRect(-85, -215, 170, 24, 12);
+    ctx.roundRect(-80, -170, 160, 22, 10);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = hpPct > 0.4 ? "#f59e0b" : "#ef4444";
+    ctx.fillStyle = hpPct > 0.4 ? (h.isOutpost ? "#f59e0b" : "#22c55e") : "#ef4444";
     ctx.beginPath();
-    ctx.roundRect(-81, -211, 162 * hpPct, 16, 8);
+    ctx.roundRect(-77, -167, 154 * hpPct, 16, 7);
     ctx.fill();
 
     ctx.fillStyle = "#ffffff";
@@ -2530,50 +2461,24 @@ window.GameEngine = {
     ctx.textAlign = "center";
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
-    var hallText = "🏛️ 守護大本營 Lv." + hallLv + " (" + Math.ceil(h.hp) + "/" + h.maxHp + ")";
-    ctx.strokeText(hallText, 0, -199);
-    ctx.fillText(hallText, 0, -199);
+    var hallText = (h.isOutpost ? "🛡️ " : "🏛️ ") + h.name + " (" + Math.ceil(h.hp) + "/" + h.maxHp + ")";
+    ctx.strokeText(hallText, 0, -155);
+    ctx.fillText(hallText, 0, -155);
 
     ctx.restore();
   },
 
   drawTerritoryBoundaries: function(ctx) {
-    var zones = [
-      { id: 1, label: "🔒 擴建北道 (踏上 EXPAND 陣位解鎖)", x: 240, y: 80, w: 1120, h: 170 },
-      { id: 2, label: "🔒 擴建中路 (踏上 EXPAND 陣位解鎖)", x: 760, y: 270, w: 980, h: 420 },
-      { id: 3, label: "🔒 擴建南道 (踏上 EXPAND 陣位解鎖)", x: 80, y: 690, w: 1380, h: 520 }
-    ];
-    var self = this;
-    zones.forEach(function(z) {
-      if (self.state.unlockedZones.indexOf(z.id) === -1) {
-        ctx.save();
-        ctx.fillStyle = "rgba(15, 23, 42, 0.44)";
-        ctx.strokeStyle = "rgba(168, 85, 247, 0.65)";
-        ctx.setLineDash([10, 8]);
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(z.x, z.y, z.w, z.h, 20);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#fde047";
-        ctx.font = "900 15px Inter, sans-serif";
-        ctx.textAlign = "center";
-        ctx.strokeStyle = "#000";
-        ctx.lineWidth = 3.5;
-        ctx.strokeText(z.label, z.x + z.w / 2, z.y + z.h / 2);
-        ctx.fillText(z.label, z.x + z.w / 2, z.y + z.h / 2);
-        ctx.restore();
-      }
-    });
+    // Drawn if unlockedZones does not contain zone 1, 2, or 3
   },
 
   drawGroundLogosAndStatues: function(ctx) {
     var self = this;
     var time = performance.now() * 0.004;
 
-    window.GAME_DATA.groundPads.forEach(function(pad) {
+    (window.GAME_DATA.groundPads || []).forEach(function(pad) {
       if (self.state.unlockedZones.indexOf(pad.zone) === -1) return;
-      if (pad.type === "town_hall") return; // Rendered as Keep
+      if (pad.type === "town_hall") return;
 
       var st = self.state.pads[pad.id] || { level: 0, invested: 0, cooldown: 0 };
       var cost = self.getPadCost(pad);
@@ -2594,24 +2499,18 @@ window.GameEngine = {
       ctx.save();
       ctx.translate(pad.x, pad.y);
 
-      if (isStanding || (canAfford && !isMax && pad.id === "pad_FrostStatue")) {
+      if (isStanding || (canAfford && !isMax && st.level === 0)) {
         var pulse = 1 + Math.sin(time * 2.2) * 0.06;
         ctx.save();
         ctx.scale(pulse, pulse * 0.82);
-        var haloGrad = ctx.createRadialGradient(0, 0, 34, 0, 0, 62);
+        var haloGrad = ctx.createRadialGradient(0, 0, 34, 0, 0, 58);
         haloGrad.addColorStop(0, "rgba(56, 189, 248, 0.85)");
         haloGrad.addColorStop(0.6, "rgba(34, 211, 238, 0.45)");
         haloGrad.addColorStop(1, "rgba(34, 211, 238, 0)");
         ctx.fillStyle = haloGrad;
         ctx.beginPath();
-        ctx.arc(0, 0, 62, 0, Math.PI * 2);
+        ctx.arc(0, 0, 58, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.strokeStyle = "#67e8f9";
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, 50, 0, Math.PI * 2);
-        ctx.stroke();
         ctx.restore();
       }
 
@@ -2620,14 +2519,14 @@ window.GameEngine = {
 
       ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
       ctx.beginPath();
-      ctx.arc(0, 5, 45, 0, Math.PI * 2);
+      ctx.arc(0, 5, 42, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = isStanding ? "#cbd5e1" : "#8c968e";
       ctx.strokeStyle = "#1e293b";
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.arc(0, 0, 44, 0, Math.PI * 2);
+      ctx.arc(0, 0, 42, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
@@ -2635,7 +2534,7 @@ window.GameEngine = {
       ctx.strokeStyle = "#1e1b4b";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(0, 0, 36, 0, Math.PI * 2);
+      ctx.arc(0, 0, 34, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
@@ -2644,7 +2543,7 @@ window.GameEngine = {
         ctx.strokeStyle = "#22c55e";
         ctx.lineWidth = 5.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 40, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+        ctx.arc(0, 0, 38, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
         ctx.stroke();
       }
       ctx.restore();
@@ -2710,17 +2609,10 @@ window.GameEngine = {
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = "#a3ad9e";
-      ctx.beginPath();
-      ctx.roundRect(-34, -68, 68, 18, 5);
-      ctx.fill();
-      ctx.stroke();
-
       ctx.fillStyle = "#2563eb";
       ctx.beginPath();
       ctx.moveTo(-26, -68);
       ctx.lineTo(0, -112);
-      ctx.lineTo(14, -116);
       ctx.lineTo(26, -68);
       ctx.closePath();
       ctx.fill();
@@ -2773,11 +2665,6 @@ window.GameEngine = {
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = "#0f172a";
-      ctx.beginPath();
-      ctx.arc(0, 10, 12, Math.PI, 0, false);
-      ctx.fill();
-
       ctx.font = "18px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(bp.icon, 0, -38);
@@ -2802,7 +2689,7 @@ window.GameEngine = {
 
   drawSceneryProps: function(ctx) {
     var time = performance.now() * 0.003;
-    this.scenery.forEach(function(s) {
+    (this.scenery || []).forEach(function(s) {
       ctx.save();
       ctx.translate(s.x, s.y);
       var sc = s.scale || 1;
@@ -2817,50 +2704,22 @@ window.GameEngine = {
         ctx.fill();
         ctx.stroke();
 
-        if (s.kind === "rune_tree") {
-          ctx.fillStyle = "#38bdf8";
-          ctx.beginPath();
-          ctx.arc(0, -10, 5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
         ctx.fillStyle = "#2e6f28";
         ctx.beginPath();
         ctx.arc(0, -52, 34, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-
-        ctx.fillStyle = "#4d9e3f";
-        ctx.beginPath();
-        ctx.arc(-14, -60, 24, 0, Math.PI * 2);
-        ctx.arc(14, -58, 24, 0, Math.PI * 2);
-        ctx.arc(0, -72, 26, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
       } else if (s.kind === "crystal_cluster") {
-        var glow = 0.85 + Math.sin(time * 2 + s.x) * 0.15;
-        ctx.save();
-        ctx.scale(glow, glow);
         ctx.fillStyle = s.color || "#d946ef";
-        ctx.strokeStyle = "#1e1b4b";
-        ctx.lineWidth = 2.8;
-
         ctx.beginPath();
-        ctx.moveTo(-8, 4);
-        ctx.lineTo(-10, -24);
-        ctx.lineTo(0, -36);
-        ctx.lineTo(10, -22);
-        ctx.lineTo(8, 4);
-        ctx.closePath();
+        ctx.arc(0, -18, 12, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
-        ctx.restore();
       }
       ctx.restore();
     });
   },
 
-  drawHero: function(ctx) {
+drawHero: function(ctx) {
     var cls = this.getCurrentHeroClass();
     var h = this.hero;
     ctx.save();
