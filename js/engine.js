@@ -2719,35 +2719,38 @@ window.GameEngine = {
     });
   },
 
-drawHero: function(ctx) {
+  // ================= Q-VERSION CHIBI 2-HEAD HERO RENDERING =================
+  drawHero: function(ctx) {
     var cls = this.getCurrentHeroClass();
     var h = this.hero;
     ctx.save();
     ctx.translate(h.x, h.y);
 
-    // Sacred ground halo
+    // Cute glowing circular magic aura on ground
     ctx.save();
-    ctx.scale(1, 0.68);
-    var grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 34);
-    grad.addColorStop(0, "rgba(253, 224, 71, 0.35)");
-    grad.addColorStop(0.75, "rgba(250, 204, 21, 0.75)");
+    ctx.scale(1, 0.65);
+    var grad = ctx.createRadialGradient(0, 0, 8, 0, 0, 32);
+    grad.addColorStop(0, "rgba(253, 224, 71, 0.45)");
+    grad.addColorStop(0.7, "rgba(250, 204, 21, 0.85)");
     grad.addColorStop(1, "rgba(250, 204, 21, 0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, 0, 34, 0, Math.PI * 2);
+    ctx.arc(0, 0, 32, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = "#fef08a";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([4, 4]);
     ctx.beginPath();
-    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
+    // Destination guidance line
     if (h.targetX !== null && h.targetY !== null) {
       ctx.save();
-      ctx.strokeStyle = "rgba(253, 224, 71, 0.55)";
-      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = "rgba(253, 224, 71, 0.6)";
+      ctx.setLineDash([5, 5]);
       ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(0, 0);
@@ -2757,781 +2760,1178 @@ drawHero: function(ctx) {
     }
 
     var bob = Math.sin(h.animPhase) * 2.5;
+    var legSwing = Math.sin(h.animPhase * 1.5) * 4;
     ctx.save();
     ctx.scale(h.facing, 1);
 
-    // Cape
-    ctx.fillStyle = cls.capeColor || "#1d4ed8";
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#1e1b4b";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // 1. Chibi Cape
+    ctx.fillStyle = cls.capeColor || "#2563eb";
     ctx.beginPath();
-    ctx.moveTo(-13, -18 + bob);
-    ctx.lineTo(13, -18 + bob);
-    ctx.lineTo(17, 6 + bob);
-    ctx.lineTo(-17, 6 + bob);
+    ctx.moveTo(-9, -10 + bob);
+    ctx.quadraticCurveTo(-14, 2 + bob, -11, 10 + bob);
+    ctx.lineTo(11, 10 + bob);
+    ctx.quadraticCurveTo(14, 2 + bob, 9, -10 + bob);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Body
+    // 2. Chibi Stubby Legs & Feet (Rounded shoes)
+    ctx.fillStyle = "#475569";
+    ctx.beginPath();
+    ctx.ellipse(-5 - legSwing * 0.5, 9 + bob, 4.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(5 + legSwing * 0.5, 9 + bob, 4.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 3. Cute Chubby 2-Head Body (Short stubby tunic, ~14px)
     ctx.fillStyle = "#fbbf24";
-    ctx.fillRect(-4, -16 + bob, 8, 21);
-
-    // Head
-    ctx.fillStyle = "#fde68a";
     ctx.beginPath();
-    ctx.arc(0, -24 + bob, 10, 0, Math.PI * 2);
+    ctx.roundRect(-8, -12 + bob, 16, 18, 7);
     ctx.fill();
     ctx.stroke();
 
-    // Beard
-    ctx.fillStyle = "#f8fafc";
+    // Golden waist belt & buckle
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(-7.5, -1 + bob, 15, 3.5);
+    ctx.fillStyle = "#fef08a";
+    ctx.fillRect(-2.5, -2 + bob, 5, 5.5);
+
+    // 4. Massive Chibi Head (Oversized, radius 14.5px, 2-head ratio)
+    ctx.fillStyle = "#fed7aa";
     ctx.beginPath();
-    ctx.moveTo(-9, -22 + bob);
-    ctx.quadraticCurveTo(0, -6 + bob, 9, -22 + bob);
-    ctx.closePath();
+    ctx.arc(0, -24 + bob, 14.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // Hat
-    ctx.fillStyle = cls.hatColor || "#2563eb";
+    // Rosy blushing cheeks
+    ctx.fillStyle = "rgba(251, 113, 133, 0.65)";
     ctx.beginPath();
-    ctx.ellipse(0, -31 + bob, 17, 5.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(-8.5, -20 + bob, 3.5, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(8.5, -20 + bob, 3.5, 2.2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(-12, -32 + bob);
-    ctx.lineTo(2, -52 + bob);
-    ctx.lineTo(12, -32 + bob);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Staff
-    ctx.strokeStyle = "#78350f";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(14, 6 + bob);
-    ctx.lineTo(18, -32 + bob);
-    ctx.stroke();
-
-    // Staff Gem
-    ctx.fillStyle = "#38bdf8";
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(18, -36 + bob, 6.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.restore();
-
-    ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
-    ctx.beginPath();
-    ctx.roundRect(-26, -68 + bob, 52, 15, 7);
-    ctx.fill();
-    ctx.fillStyle = "#fde047";
-    ctx.font = "900 9.5px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Lv." + this.state.heroLevel + " " + cls.name, 0, -57 + bob);
-
-    ctx.restore();
-  },
-
-  // ================= PROCEDURAL MONSTER FIGURES (NO CIRCLES!) =================
-  drawEnemies: function(ctx) {
-    for (var i = 0; i < this.enemies.length; i++) {
-      var e = this.enemies[i];
-      var bob = Math.abs(Math.sin(e.walkPhase || 0)) * 3;
-      var fTime = e.flashTimer > 0;
-      ctx.save();
-      ctx.translate(e.x, e.y);
-
-      // Shadow
-      ctx.fillStyle = "rgba(0,0,0,0.35)";
+    // Class-specific cute hair / beard
+    if (cls.id === "archmage") {
+      // Fluffy rounded white beard
+      ctx.fillStyle = "#f8fafc";
       ctx.beginPath();
-      ctx.ellipse(0, e.radius * 0.75, e.radius * 0.95, e.radius * 0.45, 0, 0, Math.PI * 2);
+      ctx.arc(0, -14 + bob, 7, 0, Math.PI, false);
       ctx.fill();
-
-      ctx.strokeStyle = "#0f172a";
-      ctx.lineWidth = 2.5;
-
-      if (e.archId === "cultist") {
-        // Goblin: Green body, pointy goblin ears, leather tunic, dagger
-        ctx.fillStyle = fTime ? "#ffffff" : "#65a30d";
-        // Torso & legs
-        ctx.fillRect(-7, -4 - bob, 14, 14);
-        ctx.strokeRect(-7, -4 - bob, 14, 14);
-        // Tunic
-        ctx.fillStyle = fTime ? "#ffffff" : "#78350f";
-        ctx.fillRect(-6, -4 - bob, 12, 8);
-        // Head
-        ctx.fillStyle = fTime ? "#ffffff" : "#84cc16";
-        ctx.beginPath();
-        ctx.arc(0, -12 - bob, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Pointy ears
-        ctx.beginPath();
-        ctx.moveTo(-9, -14 - bob); ctx.lineTo(-19, -17 - bob); ctx.lineTo(-8, -9 - bob);
-        ctx.moveTo(9, -14 - bob); ctx.lineTo(19, -17 - bob); ctx.lineTo(8, -9 - bob);
-        ctx.fill();
-        ctx.stroke();
-        // Dagger in hand
-        ctx.fillStyle = "#cbd5e1";
-        ctx.fillRect(8, -8 - bob, 10, 3);
-        // Yellow eyes
-        ctx.fillStyle = "#fef08a";
-        ctx.fillRect(-4, -14 - bob, 3, 3);
-        ctx.fillRect(2, -14 - bob, 3, 3);
-
-      } else if (e.archId === "skeleton_warrior") {
-        // Skeleton: Bone torso, ribs, wooden shield, scimitar
-        ctx.fillStyle = fTime ? "#ffffff" : "#cbd5e1";
-        // Spine & pelvis
-        ctx.fillRect(-3, -4 - bob, 6, 14);
-        // Ribs
-        ctx.fillRect(-8, -4 - bob, 16, 3);
-        ctx.fillRect(-7, 1 - bob, 14, 3);
-        // Skull
-        ctx.fillStyle = fTime ? "#ffffff" : "#f8fafc";
-        ctx.beginPath();
-        ctx.roundRect(-9, -20 - bob, 18, 15, 4);
-        ctx.fill();
-        ctx.stroke();
-        // Eye sockets
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(-5, -16 - bob, 3.5, 4);
-        ctx.fillRect(2, -16 - bob, 3.5, 4);
-        // Shield on left arm
-        ctx.fillStyle = "#78350f";
-        ctx.strokeStyle = "#94a3b8";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(-11, -2 - bob, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Scimitar on right arm
-        ctx.strokeStyle = "#cbd5e1";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(8, 0 - bob);
-        ctx.quadraticCurveTo(16, -8 - bob, 14, -18 - bob);
-        ctx.stroke();
-
-      } else if (e.archId === "shadow_imp") {
-        // Shadow Imp: Horned purple body, flapping bat wings, pitchfork
-        var wingFlap = Math.sin(e.walkPhase * 1.5) * 6;
-        ctx.fillStyle = fTime ? "#ffffff" : "#4c1d95";
-        // Wings
-        ctx.beginPath();
-        ctx.moveTo(-6, -8 - bob);
-        ctx.lineTo(-20, -18 - bob + wingFlap);
-        ctx.lineTo(-12, 0 - bob);
-        ctx.moveTo(6, -8 - bob);
-        ctx.lineTo(20, -18 - bob - wingFlap);
-        ctx.lineTo(12, 0 - bob);
-        ctx.fill();
-        ctx.stroke();
-        // Body
-        ctx.beginPath();
-        ctx.roundRect(-8, -6 - bob, 16, 16, 4);
-        ctx.fill();
-        ctx.stroke();
-        // Head
-        ctx.beginPath();
-        ctx.arc(0, -14 - bob, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Crimson horns
-        ctx.fillStyle = "#dc2626";
-        ctx.beginPath();
-        ctx.moveTo(-6, -20 - bob); ctx.lineTo(-12, -28 - bob); ctx.lineTo(-2, -22 - bob);
-        ctx.moveTo(6, -20 - bob); ctx.lineTo(12, -28 - bob); ctx.lineTo(2, -22 - bob);
-        ctx.fill();
-        ctx.stroke();
-        // Red eyes
-        ctx.fillStyle = "#f43f5e";
-        ctx.fillRect(-4, -15 - bob, 3, 3);
-        ctx.fillRect(2, -15 - bob, 3, 3);
-
-      } else if (e.archId === "orc_warrior") {
-        // Orc Berserker: Broad muscular green brute with iron helmet & massive battleaxe
-        ctx.fillStyle = fTime ? "#ffffff" : "#4d7c0f";
-        // Massive shoulders and torso
-        ctx.beginPath();
-        ctx.roundRect(-14, -8 - bob, 28, 22, 6);
-        ctx.fill();
-        ctx.stroke();
-        // Leather kilt / belt
-        ctx.fillStyle = "#78350f";
-        ctx.fillRect(-12, 8 - bob, 24, 7);
-        // Iron pauldron on shoulder
-        ctx.fillStyle = "#475569";
-        ctx.beginPath();
-        ctx.arc(-14, -6 - bob, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Head with helmet
-        ctx.fillStyle = fTime ? "#ffffff" : "#4d7c0f";
-        ctx.beginPath();
-        ctx.arc(0, -16 - bob, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Iron brow helmet
-        ctx.fillStyle = "#334155";
-        ctx.beginPath();
-        ctx.arc(0, -19 - bob, 12, Math.PI, 0, false);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Tusks
-        ctx.fillStyle = "#f8fafc";
-        ctx.beginPath();
-        ctx.moveTo(-5, -11 - bob); ctx.lineTo(-3, -17 - bob); ctx.lineTo(-1, -11 - bob);
-        ctx.moveTo(1, -11 - bob); ctx.lineTo(3, -17 - bob); ctx.lineTo(5, -11 - bob);
-        ctx.fill();
-        // Red angry eyes
-        ctx.fillStyle = "#ef4444";
-        ctx.fillRect(-6, -17 - bob, 3, 2.5);
-        ctx.fillRect(3, -17 - bob, 3, 2.5);
-        // Massive two-bladed battleaxe
-        ctx.strokeStyle = "#78350f";
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(12, 10 - bob);
-        ctx.lineTo(18, -26 - bob);
-        ctx.stroke();
-        ctx.fillStyle = "#94a3b8";
-        ctx.strokeStyle = "#1e293b";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(18, -22 - bob, 10, -Math.PI / 2, Math.PI / 2, false);
-        ctx.arc(18, -22 - bob, 10, Math.PI / 2, -Math.PI / 2, false);
-        ctx.fill();
-        ctx.stroke();
-
-      } else if (e.archId === "scorpion") {
-        // Venom Scorpion: Golden chitin body, 6 scuttling legs, front pincers, arched tail with stinger
-        var legWave = Math.sin(e.walkPhase * 2) * 4;
-        ctx.fillStyle = fTime ? "#ffffff" : "#d97706";
-        // 6 legs
-        ctx.strokeStyle = "#78350f";
-        ctx.lineWidth = 2.2;
-        for (var lg = -1; lg <= 1; lg++) {
-          ctx.beginPath();
-          ctx.moveTo(-8, lg * 7 - bob);
-          ctx.lineTo(-20, lg * 8 - bob + legWave * lg);
-          ctx.lineTo(-22, lg * 9 + 6 - bob);
-          ctx.moveTo(8, lg * 7 - bob);
-          ctx.lineTo(20, lg * 8 - bob - legWave * lg);
-          ctx.lineTo(22, lg * 9 + 6 - bob);
-          ctx.stroke();
-        }
-        // Segmented oval body
-        ctx.beginPath();
-        ctx.ellipse(0, -2 - bob, 12, 16, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Two front claws
-        ctx.fillStyle = "#b45309";
-        ctx.beginPath();
-        ctx.arc(-11, 14 - bob, 5, 0, Math.PI * 2);
-        ctx.arc(11, 14 - bob, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Arched stinger tail over back
-        ctx.strokeStyle = "#b45309";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(0, -14 - bob);
-        ctx.quadraticCurveTo(8, -28 - bob, -2, -32 - bob);
-        ctx.stroke();
-        // Stinger tip & glowing venom drop
-        ctx.fillStyle = "#1e293b";
-        ctx.beginPath();
-        ctx.arc(-2, -32 - bob, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#22c55e";
-        ctx.beginPath();
-        ctx.arc(-5, -34 - bob, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-      } else if (e.archId === "dark_mage") {
-        // Dark Mage: Deep violet hooded cowl, glowing eyes, channeling hovering dark purple orb
-        ctx.fillStyle = fTime ? "#ffffff" : "#312e81";
-        // Robe skirt
-        ctx.beginPath();
-        ctx.moveTo(-11, -8 - bob);
-        ctx.lineTo(11, -8 - bob);
-        ctx.lineTo(14, 16 - bob);
-        ctx.lineTo(-14, 16 - bob);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Hooded cowl
-        ctx.fillStyle = fTime ? "#ffffff" : "#1e1b4b";
-        ctx.beginPath();
-        ctx.arc(0, -15 - bob, 11, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Deep hood face shadow & glowing eyes
-        ctx.fillStyle = "#0f172a";
-        ctx.beginPath();
-        ctx.arc(0, -14 - bob, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#c084fc";
-        ctx.fillRect(-4, -15 - bob, 2.5, 2.5);
-        ctx.fillRect(2, -15 - bob, 2.5, 2.5);
-        // Hovering dark orb between hands
-        var orbPulse = Math.sin(e.walkPhase * 1.8) * 2;
-        ctx.fillStyle = "#a855f7";
-        ctx.beginPath();
-        ctx.arc(0, 4 - bob + orbPulse, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#e9d5ff";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-      } else if (e.archId === "stone_golem") {
-        // Stone Golem: Heavy granite blocks, moss patches, glowing runic cyan core
-        ctx.fillStyle = fTime ? "#ffffff" : "#64748b";
-        // Chunky torso
-        ctx.beginPath();
-        ctx.roundRect(-16, -12 - bob, 32, 28, 6);
-        ctx.fill();
-        ctx.stroke();
-        // Green moss
-        ctx.fillStyle = "#84cc16";
-        ctx.fillRect(-10, -8 - bob, 8, 4);
-        ctx.fillRect(4, 2 - bob, 6, 5);
-        // Glowing cyan runic chest core
-        ctx.fillStyle = "#06b6d4";
-        ctx.beginPath();
-        ctx.arc(0, -1 - bob, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#a5f3fc";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        // Craggy block head
-        ctx.fillStyle = fTime ? "#ffffff" : "#475569";
-        ctx.beginPath();
-        ctx.roundRect(-10, -26 - bob, 20, 14, 4);
-        ctx.fill();
-        ctx.stroke();
-        // Glowing cyan eye slits
-        ctx.fillStyle = "#22d3ee";
-        ctx.fillRect(-6, -21 - bob, 4, 2.5);
-        ctx.fillRect(2, -21 - bob, 4, 2.5);
-        // Heavy stone boulder fists
-        ctx.fillStyle = "#475569";
-        ctx.beginPath();
-        ctx.roundRect(-22, -4 - bob, 8, 16, 4);
-        ctx.roundRect(14, -4 - bob, 8, 16, 4);
-        ctx.fill();
-        ctx.stroke();
-
-      } else if (e.archId === "frost_wolf") {
-        // Frost Wolf: Icy light-blue quadruped wolf, 4 running paws, pointed ears, bushy tail
-        var pawStride = Math.sin(e.walkPhase) * 6;
-        ctx.fillStyle = fTime ? "#ffffff" : "#93c5fd";
-        // 4 legs
-        ctx.fillRect(-12 + pawStride, 4 - bob, 6, 12);
-        ctx.fillRect(-6 - pawStride, 4 - bob, 6, 12);
-        ctx.fillRect(4 + pawStride, 4 - bob, 6, 12);
-        ctx.fillRect(10 - pawStride, 4 - bob, 6, 12);
-        // Body
-        ctx.beginPath();
-        ctx.roundRect(-16, -8 - bob, 32, 16, 6);
-        ctx.fill();
-        ctx.stroke();
-        // White chest fur
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(-4, -6 - bob, 10, 10);
-        // Head & snout
-        ctx.fillStyle = fTime ? "#ffffff" : "#93c5fd";
-        ctx.beginPath();
-        ctx.arc(14, -14 - bob, 9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Snout
-        ctx.beginPath();
-        ctx.moveTo(18, -16 - bob); ctx.lineTo(26, -12 - bob); ctx.lineTo(18, -8 - bob);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Pointed ears
-        ctx.beginPath();
-        ctx.moveTo(10, -21 - bob); ctx.lineTo(12, -28 - bob); ctx.lineTo(16, -20 - bob);
-        ctx.fill();
-        ctx.stroke();
-        // Cold blue eye
-        ctx.fillStyle = "#38bdf8";
-        ctx.fillRect(16, -16 - bob, 3, 2.5);
-        // Bushy tail
-        ctx.fillStyle = "#93c5fd";
-        ctx.beginPath();
-        ctx.moveTo(-16, -4 - bob);
-        ctx.lineTo(-28, -14 - bob);
-        ctx.lineTo(-20, -2 - bob);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-      } else if (e.archId === "flame_demon") {
-        // Flame Demon: Crimson winged demon, large ram horns, flaming core, claws
-        var wingSpan = Math.sin(e.walkPhase * 1.5) * 6;
-        ctx.fillStyle = fTime ? "#ffffff" : "#b91c1c";
-        // Bat wings
-        ctx.beginPath();
-        ctx.moveTo(-10, -12 - bob);
-        ctx.lineTo(-30, -26 - bob + wingSpan);
-        ctx.lineTo(-18, 4 - bob);
-        ctx.moveTo(10, -12 - bob);
-        ctx.lineTo(30, -26 - bob - wingSpan);
-        ctx.lineTo(18, 4 - bob);
-        ctx.fill();
-        ctx.stroke();
-        // Muscular torso
-        ctx.beginPath();
-        ctx.roundRect(-14, -10 - bob, 28, 26, 6);
-        ctx.fill();
-        ctx.stroke();
-        // Fiery chest core
-        ctx.fillStyle = "#f59e0b";
-        ctx.beginPath();
-        ctx.arc(0, 0 - bob, 7, 0, Math.PI * 2);
-        ctx.fill();
-        // Demon head
-        ctx.fillStyle = fTime ? "#ffffff" : "#dc2626";
-        ctx.beginPath();
-        ctx.arc(0, -18 - bob, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Black curved ram horns
-        ctx.fillStyle = "#111827";
-        ctx.beginPath();
-        ctx.moveTo(-8, -25 - bob); ctx.quadraticCurveTo(-20, -38 - bob, -12, -18 - bob);
-        ctx.moveTo(8, -25 - bob); ctx.quadraticCurveTo(20, -38 - bob, 12, -18 - bob);
-        ctx.fill();
-        ctx.stroke();
-        // Burning yellow eyes
-        ctx.fillStyle = "#fef08a";
-        ctx.fillRect(-5, -19 - bob, 3, 3);
-        ctx.fillRect(2, -19 - bob, 3, 3);
-
-      } else if (e.archId === "void_reaver") {
-        // Void Reaver: Floating dark purple alien entity with hovering scythes and shadow tendrils
-        var floatBob = Math.sin(e.walkPhase) * 4;
-        ctx.fillStyle = fTime ? "#ffffff" : "#581c87";
-        // Floating mantle
-        ctx.beginPath();
-        ctx.moveTo(-16, -10 - floatBob);
-        ctx.lineTo(16, -10 - floatBob);
-        ctx.lineTo(18, 14 - floatBob);
-        ctx.lineTo(-18, 14 - floatBob);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Shadow tendrils
-        ctx.strokeStyle = "#3b0764";
-        ctx.lineWidth = 3;
-        for (var td = -10; td <= 10; td += 10) {
-          ctx.beginPath();
-          ctx.moveTo(td, 14 - floatBob);
-          ctx.quadraticCurveTo(td + Math.sin(e.walkPhase + td) * 5, 26 - floatBob, td, 32 - floatBob);
-          ctx.stroke();
-        }
-        // Head cowl
-        ctx.fillStyle = "#2e1065";
-        ctx.beginPath();
-        ctx.arc(0, -18 - floatBob, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Neon cyan horizontal visor slit
-        ctx.fillStyle = "#22d3ee";
-        ctx.fillRect(-7, -19 - floatBob, 14, 3);
-        // Hovering crescent energy scythes
-        ctx.fillStyle = "#a855f7";
-        ctx.strokeStyle = "#e9d5ff";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(-24, -4 - floatBob, 12, -Math.PI / 2, Math.PI / 2, false);
-        ctx.arc(24, -4 - floatBob, 12, Math.PI / 2, -Math.PI / 2, false);
-        ctx.fill();
-        ctx.stroke();
-
-      } else {
-        // Realm Boss: Colossal Armored Demon Titan
-        var bossBob = Math.sin(e.walkPhase * 0.8) * 3;
-        ctx.fillStyle = fTime ? "#ffffff" : "#7f1d1d";
-        // Massive shoulders and armor
-        ctx.beginPath();
-        ctx.roundRect(-24, -16 - bossBob, 48, 38, 8);
-        ctx.fill();
-        ctx.stroke();
-        // Spiked pauldrons
-        ctx.fillStyle = "#1e293b";
-        ctx.fillRect(-28, -20 - bossBob, 12, 14);
-        ctx.fillRect(16, -20 - bossBob, 12, 14);
-        // Giant horned helm
-        ctx.fillStyle = fTime ? "#ffffff" : "#991b1b";
-        ctx.beginPath();
-        ctx.arc(0, -28 - bossBob, 16, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Huge horns
-        ctx.fillStyle = "#0f172a";
-        ctx.beginPath();
-        ctx.moveTo(-10, -38 - bossBob); ctx.lineTo(-26, -56 - bossBob); ctx.lineTo(-6, -34 - bossBob);
-        ctx.moveTo(10, -38 - bossBob); ctx.lineTo(26, -56 - bossBob); ctx.lineTo(6, -34 - bossBob);
-        ctx.fill();
-        ctx.stroke();
-        // Floating boss crown
-        ctx.fillStyle = "#fbbf24";
-        ctx.beginPath();
-        ctx.moveTo(-12, -48 - bossBob);
-        ctx.lineTo(-6, -56 - bossBob);
-        ctx.lineTo(0, -48 - bossBob);
-        ctx.lineTo(6, -56 - bossBob);
-        ctx.lineTo(12, -48 - bossBob);
-        ctx.lineTo(10, -42 - bossBob);
-        ctx.lineTo(-10, -42 - bossBob);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        // Glowing red eyes
-        ctx.fillStyle = "#f43f5e";
-        ctx.fillRect(-7, -29 - bossBob, 4, 3.5);
-        ctx.fillRect(3, -29 - bossBob, 4, 3.5);
-        // Huge greatsword
-        ctx.strokeStyle = "#334155";
-        ctx.lineWidth = 4.5;
-        ctx.beginPath();
-        ctx.moveTo(22, 18 - bossBob);
-        ctx.lineTo(34, -40 - bossBob);
-        ctx.stroke();
-        ctx.fillStyle = "#f59e0b";
-        ctx.fillRect(30, -38 - bossBob, 8, 8);
-      }
-
-      // Health Bar
-      var w = e.isBoss ? 70 : 30;
-      var pct = Math.max(0, e.hp / e.maxHp);
-      ctx.fillStyle = "rgba(0,0,0,0.85)";
-      ctx.fillRect(-w / 2, -e.radius - 24, w, 5);
-      ctx.fillStyle = e.isBoss ? "#ef4444" : "#22c55e";
-      ctx.fillRect(-w / 2, -e.radius - 24, w * pct, 5);
-
-      ctx.restore();
+      ctx.stroke();
+    } else {
+      // Cute brown or golden bangs
+      ctx.fillStyle = "#b45309";
+      ctx.beginPath();
+      ctx.arc(0, -32 + bob, 13, Math.PI * 0.9, Math.PI * 2.1, false);
+      ctx.fill();
     }
+
+    // Sparkling anime chibi eyes (Large, shiny highlights)
+    [-4.5, 4.5].forEach(function(ex) {
+      // Eye base
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.ellipse(ex, -24 + bob, 3.5, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Eye color iris
+      ctx.fillStyle = cls.color || "#38bdf8";
+      ctx.beginPath();
+      ctx.arc(ex, -23 + bob, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Main big white twinkle
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(ex - 1.2, -25.5 + bob, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Sub sparkle
+      ctx.beginPath();
+      ctx.arc(ex + 1.2, -22 + bob, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Cute smiling mouth
+    ctx.strokeStyle = "#991b1b";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(0, -18 + bob, 2.8, 0.15, Math.PI - 0.15);
+    ctx.stroke();
+
+    // 5. Oversized Cute Wizard Hat / Cap
+    ctx.fillStyle = cls.hatColor || "#2563eb";
+    ctx.strokeStyle = "#1e1b4b";
+    ctx.lineWidth = 2.2;
+    // Hat brim
+    ctx.beginPath();
+    ctx.ellipse(0, -32 + bob, 19, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Hat cone (soft tilted cute tip)
+    ctx.beginPath();
+    ctx.moveTo(-13, -33 + bob);
+    ctx.quadraticCurveTo(-6, -55 + bob, 12, -54 + bob);
+    ctx.quadraticCurveTo(4, -40 + bob, 13, -33 + bob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Golden star on hat
+    ctx.fillStyle = "#fde047";
+    ctx.font = "bold 9px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("★", 0, -36 + bob);
+
+    // 6. Cute Chibi Magic Staff
+    ctx.strokeStyle = "#78350f";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(13, 8 + bob);
+    ctx.lineTo(17, -26 + bob);
+    ctx.stroke();
+
+    // Glowing staff orb
+    ctx.fillStyle = "#38bdf8";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(17, -30 + bob, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Floating Cute Level Badge
+    ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+    ctx.strokeStyle = "#fde047";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.roundRect(-28, -72 + bob, 56, 16, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fde047";
+    ctx.font = "900 10px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("★ Lv." + this.state.heroLevel + " " + cls.name, 0, -60 + bob);
+
+    ctx.restore();
   },
 
-  // ================= PROCEDURAL ALLIED FIGURES (NO CIRCLES!) =================
+  // ================= Q-VERSION CHIBI ALLIED FIGURES =================
   drawAllies: function(ctx) {
     for (var i = 0; i < this.allies.length; i++) {
       var al = this.allies[i];
+      var bob = Math.sin(performance.now() * 0.008 + i) * 2;
       ctx.save();
       ctx.translate(al.x, al.y);
 
       // Shadow
       ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.beginPath();
-      ctx.ellipse(0, 10, al.radius * 0.9, al.radius * 0.45, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 10, al.radius * 0.95, al.radius * 0.45, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = "#0f172a";
-      ctx.lineWidth = 2.4;
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
 
       if (al.kind === "guard") {
-        // Sanctum Guard: Silver plate armor, blue tabard, blue heater shield with golden cross, sword
-        ctx.fillStyle = "#cbd5e1";
-        ctx.fillRect(-6, -5, 12, 15);
-        ctx.strokeRect(-6, -5, 12, 15);
-        // Blue tabard
-        ctx.fillStyle = "#2563eb";
-        ctx.fillRect(-4, -5, 8, 12);
-        // Helmet
-        ctx.fillStyle = "#cbd5e1";
+        // Chibi Guard: Chubby silver armor, oversized round helmet, shiny eyes, pink cheeks, cute shield
+        // Stubby body
+        ctx.fillStyle = "#93c5fd";
         ctx.beginPath();
-        ctx.arc(0, -14, 8, 0, Math.PI * 2);
+        ctx.roundRect(-7, -4 + bob, 14, 13, 5);
         ctx.fill();
         ctx.stroke();
-        // Blue crest plume
-        ctx.fillStyle = "#3b82f6";
-        ctx.fillRect(-2, -22, 4, 8);
-        // Heater shield with golden cross
-        ctx.fillStyle = "#1d4ed8";
-        ctx.strokeStyle = "#fbbf24";
-        ctx.lineWidth = 1.5;
+        // Big round chibi helmet (radius 12)
+        ctx.fillStyle = "#cbd5e1";
         ctx.beginPath();
-        ctx.moveTo(-14, -12);
-        ctx.lineTo(-4, -12);
-        ctx.lineTo(-4, 0);
-        ctx.lineTo(-9, 8);
-        ctx.lineTo(-14, 0);
+        ctx.arc(0, -15 + bob, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Blue fluffy plume
+        ctx.fillStyle = "#3b82f6";
+        ctx.beginPath();
+        ctx.arc(0, -28 + bob, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Face cutout in helmet
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.arc(0, -13 + bob, 7, 0, Math.PI * 2);
+        ctx.fill();
+        // Blushing cheeks
+        ctx.fillStyle = "rgba(251, 113, 133, 0.65)";
+        ctx.beginPath();
+        ctx.ellipse(-4.5, -11 + bob, 2, 1.2, 0, 0, Math.PI * 2);
+        ctx.ellipse(4.5, -11 + bob, 2, 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Glistening eyes
+        [-2.5, 2.5].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.arc(ex, -14 + bob, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(ex - 0.5, -14.6 + bob, 0.7, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        // Cute heart/cross heater shield
+        ctx.fillStyle = "#2563eb";
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-14, -14 + bob);
+        ctx.lineTo(-4, -14 + bob);
+        ctx.lineTo(-4, -2 + bob);
+        ctx.lineTo(-9, 6 + bob);
+        ctx.lineTo(-14, -2 + bob);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = "#fde047";
-        ctx.fillRect(-10, -9, 2, 8);
-        ctx.fillRect(-13, -6, 8, 2);
-        // Steel broadsword in right hand
-        ctx.strokeStyle = "#e2e8f0";
+        ctx.fillStyle = "#fef08a";
+        ctx.font = "bold 8px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("★", -9, -3 + bob);
+        // Toy broadsword
+        ctx.strokeStyle = "#cbd5e1";
         ctx.lineWidth = 2.8;
         ctx.beginPath();
-        ctx.moveTo(6, 2);
-        ctx.lineTo(16, -12);
+        ctx.moveTo(6, 2 + bob);
+        ctx.lineTo(15, -9 + bob);
         ctx.stroke();
 
       } else if (al.kind === "archer") {
-        // Elf Ranger: Green hooded cloak, leather tunic, recurve bow with nocked arrow
-        ctx.fillStyle = "#16a34a";
-        // Cloak
+        // Chibi Elf Ranger: Oversized green hood, pointy elf ears, shiny emerald eyes, tiny bow
+        ctx.fillStyle = "#15803d";
         ctx.beginPath();
-        ctx.moveTo(-8, -6);
-        ctx.lineTo(8, -6);
-        ctx.lineTo(11, 14);
-        ctx.lineTo(-11, 14);
-        ctx.closePath();
+        ctx.roundRect(-6, -4 + bob, 12, 13, 5);
         ctx.fill();
         ctx.stroke();
-        // Pointed green hood
+        // Big hood head
+        ctx.fillStyle = "#22c55e";
         ctx.beginPath();
-        ctx.arc(0, -14, 8, 0, Math.PI * 2);
+        ctx.arc(0, -15 + bob, 12.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // Hood point
+        // Hood peak
         ctx.beginPath();
-        ctx.moveTo(-5, -20); ctx.lineTo(0, -25); ctx.lineTo(5, -20);
+        ctx.moveTo(-6, -24 + bob); ctx.lineTo(0, -32 + bob); ctx.lineTo(6, -24 + bob);
         ctx.fill();
-        // Recurve bow
+        // Cute face
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.arc(0, -13 + bob, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Pointy elf ears
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.moveTo(-7, -14 + bob); ctx.lineTo(-13, -16 + bob); ctx.lineTo(-6, -10 + bob);
+        ctx.moveTo(7, -14 + bob); ctx.lineTo(13, -16 + bob); ctx.lineTo(6, -10 + bob);
+        ctx.fill();
+        // Blushing cheeks
+        ctx.fillStyle = "rgba(251, 113, 133, 0.65)";
+        ctx.beginPath();
+        ctx.ellipse(-4.5, -11 + bob, 2.2, 1.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(4.5, -11 + bob, 2.2, 1.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Big green sparkling eyes
+        [-2.8, 2.8].forEach(function(ex) {
+          ctx.fillStyle = "#065f46";
+          ctx.beginPath();
+          ctx.ellipse(ex, -14 + bob, 2.2, 2.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#34d399";
+          ctx.beginPath();
+          ctx.arc(ex, -13.5 + bob, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 0.7, -14.8 + bob, 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        // Mini curved wooden bow
         ctx.strokeStyle = "#78350f";
-        ctx.lineWidth = 2.6;
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
-        ctx.arc(8, -4, 14, -Math.PI / 2.5, Math.PI / 2.5, false);
-        ctx.stroke();
-        // Bow string & arrow
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(8, -16); ctx.lineTo(2, -4); ctx.lineTo(8, 8);
-        ctx.moveTo(2, -4); ctx.lineTo(18, -4);
+        ctx.arc(9, -6 + bob, 11, -Math.PI / 2.3, Math.PI / 2.3, false);
         ctx.stroke();
 
       } else if (al.kind === "cavalry") {
-        // Royal Cavalry: Armored white warhorse, mounted knight with lance & pennant
-        // Warhorse body
+        // Chibi Royal Cavalry: Cute round chubby white pony with tiny knight on top
+        // Chubby pony body
         ctx.fillStyle = "#f8fafc";
         ctx.beginPath();
-        ctx.roundRect(-16, -4, 32, 16, 6);
+        ctx.roundRect(-14, -2 + bob, 26, 16, 7);
         ctx.fill();
         ctx.stroke();
-        // Horse neck & head
+        // Pony 4 stubby legs
+        ctx.fillRect(-11, 11 + bob, 4.5, 6);
+        ctx.fillRect(-3, 11 + bob, 4.5, 6);
+        ctx.fillRect(3, 11 + bob, 4.5, 6);
+        ctx.fillRect(9, 11 + bob, 4.5, 6);
+        // Pony big round head
         ctx.beginPath();
-        ctx.moveTo(12, -4);
-        ctx.lineTo(22, -18);
-        ctx.lineTo(26, -10);
-        ctx.lineTo(16, 4);
-        ctx.closePath();
+        ctx.arc(14, -6 + bob, 9, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // 4 horse legs
-        ctx.fillRect(-12, 10, 4, 10);
-        ctx.fillRect(-4, 10, 4, 10);
-        ctx.fillRect(4, 10, 4, 10);
-        ctx.fillRect(12, 10, 4, 10);
-        // Mounted knight
-        ctx.fillStyle = "#94a3b8";
-        ctx.fillRect(-4, -18, 10, 14);
-        ctx.strokeRect(-4, -18, 10, 14);
-        // Knight helmet
+        // Pony big shiny eye & blush
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(15, -7 + bob, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(14.3, -7.5 + bob, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(251, 113, 133, 0.6)";
+        ctx.beginPath();
+        ctx.arc(15, -4 + bob, 2, 0, Math.PI * 2);
+        ctx.fill();
+        // Tiny chibi knight riding
         ctx.fillStyle = "#cbd5e1";
         ctx.beginPath();
-        ctx.arc(1, -22, 6, 0, Math.PI * 2);
+        ctx.arc(0, -18 + bob, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // Couched lance with fluttering pennant
+        // Tiny knight visor
+        ctx.fillStyle = "#0284c7";
+        ctx.fillRect(-4, -19 + bob, 8, 2.5);
+        // Cute lance with red heart flag
         ctx.strokeStyle = "#78350f";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.8;
         ctx.beginPath();
-        ctx.moveTo(-6, -14);
-        ctx.lineTo(28, -26);
+        ctx.moveTo(-6, -12 + bob);
+        ctx.lineTo(26, -22 + bob);
         ctx.stroke();
-        ctx.fillStyle = "#dc2626";
+        ctx.fillStyle = "#ef4444";
         ctx.beginPath();
-        ctx.moveTo(28, -26);
-        ctx.lineTo(40, -22);
-        ctx.lineTo(28, -18);
+        ctx.moveTo(26, -22 + bob);
+        ctx.lineTo(36, -18 + bob);
+        ctx.lineTo(26, -14 + bob);
         ctx.closePath();
         ctx.fill();
 
       } else if (al.kind === "golem") {
-        // Arcane Automaton: Brass clockwork titan with spinning gear fists and sun core
+        // Chibi Arcane Toy Golem: Chunky round brass body, big glowing smiling visor, spinning gear hands
         ctx.fillStyle = "#d97706";
         ctx.beginPath();
-        ctx.roundRect(-16, -12, 32, 26, 6);
+        ctx.roundRect(-14, -12 + bob, 28, 24, 9);
         ctx.fill();
         ctx.stroke();
-        // Sun-rune chest core
-        ctx.fillStyle = "#fde047";
+        // Glowing cyan heart core
+        ctx.fillStyle = "#38bdf8";
         ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.arc(0, 0 + bob, 5.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = "#fef08a";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        // Head
+        // Big round head
         ctx.fillStyle = "#b45309";
         ctx.beginPath();
-        ctx.roundRect(-10, -24, 20, 12, 4);
+        ctx.roundRect(-10, -26 + bob, 20, 14, 6);
         ctx.fill();
         ctx.stroke();
-        // Visor eye
-        ctx.fillStyle = "#38bdf8";
-        ctx.fillRect(-6, -20, 12, 3);
-        // Heavy gear fists
+        // Glowing friendly smiling visor
+        ctx.fillStyle = "#67e8f9";
+        ctx.beginPath();
+        ctx.roundRect(-7, -22 + bob, 14, 5, 2.5);
+        ctx.fill();
+        // Pink blush on golem cheeks
+        ctx.fillStyle = "rgba(251, 113, 133, 0.6)";
+        ctx.beginPath();
+        ctx.arc(-6, -15 + bob, 2, 0, Math.PI * 2);
+        ctx.arc(6, -15 + bob, 2, 0, Math.PI * 2);
+        ctx.fill();
+        // Round boxing gear fists
         ctx.fillStyle = "#92400e";
         ctx.beginPath();
-        ctx.arc(-18, 4, 7, 0, Math.PI * 2);
-        ctx.arc(18, 4, 7, 0, Math.PI * 2);
+        ctx.arc(-16, 2 + bob, 6.5, 0, Math.PI * 2);
+        ctx.arc(16, 2 + bob, 6.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
       } else {
-        // Sprite (Fairy): Tiny floating fairy with translucent wings & wand
-        var fairyBob = Math.sin(performance.now() * 0.01) * 3;
-        ctx.fillStyle = "#38bdf8";
-        // Wings
-        ctx.fillStyle = "rgba(186, 230, 253, 0.75)";
+        // Chibi Sprite Fairy: Tiny floating winged cutie with sparkling eyes & star wand
+        var fairyBob = Math.sin(performance.now() * 0.012 + i) * 3.5;
+        // Translucent butterfly wings
+        ctx.fillStyle = "rgba(186, 230, 253, 0.85)";
         ctx.beginPath();
-        ctx.ellipse(-8, -10 + fairyBob, 8, 4, -0.4, 0, Math.PI * 2);
-        ctx.ellipse(8, -10 + fairyBob, 8, 4, 0.4, 0, Math.PI * 2);
+        ctx.ellipse(-7, -10 + fairyBob, 8, 4.5, -0.35, 0, Math.PI * 2);
+        ctx.ellipse(7, -10 + fairyBob, 8, 4.5, 0.35, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // Body & head
+        // Tiny dress
         ctx.fillStyle = "#38bdf8";
         ctx.beginPath();
-        ctx.arc(0, -6 + fairyBob, 5, 0, Math.PI * 2);
+        ctx.moveTo(-5, -4 + fairyBob);
+        ctx.lineTo(5, -4 + fairyBob);
+        ctx.lineTo(7, 4 + fairyBob);
+        ctx.lineTo(-7, 4 + fairyBob);
+        ctx.closePath();
+        ctx.fill();
+        // Big round head
+        ctx.fillStyle = "#fed7aa";
+        ctx.beginPath();
+        ctx.arc(0, -11 + fairyBob, 7.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // Wand
-        ctx.strokeStyle = "#fde047";
-        ctx.lineWidth = 2;
+        // Pink hair puffs
+        ctx.fillStyle = "#f472b6";
         ctx.beginPath();
-        ctx.moveTo(3, -4 + fairyBob);
-        ctx.lineTo(10, -12 + fairyBob);
-        ctx.stroke();
+        ctx.arc(-5, -16 + fairyBob, 3.5, 0, Math.PI * 2);
+        ctx.arc(5, -16 + fairyBob, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Rosy cheeks
+        ctx.fillStyle = "#fda4af";
+        ctx.beginPath();
+        ctx.arc(-3.5, -9 + fairyBob, 1.8, 0, Math.PI * 2);
+        ctx.arc(3.5, -9 + fairyBob, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        // Big twinkles
+        [-2, 2].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.arc(ex, -12 + fairyBob, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        // Star wand
+        ctx.fillStyle = "#fde047";
+        ctx.font = "bold 9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("★", 8, -4 + fairyBob);
       }
 
-      // Ally HP bar if damaged
+      // Cute mini HP bar if damaged
       if (al.kind !== "sprite" && al.hp < al.maxHp) {
-        ctx.fillStyle = "rgba(0,0,0,0.75)";
-        ctx.fillRect(-12, -26, 24, 4);
+        ctx.fillStyle = "rgba(0,0,0,0.8)";
+        ctx.beginPath();
+        ctx.roundRect(-14, -28 + bob, 28, 4.5, 2);
+        ctx.fill();
         ctx.fillStyle = "#38bdf8";
-        ctx.fillRect(-12, -26, 24 * Math.max(0, al.hp / al.maxHp), 4);
+        ctx.beginPath();
+        ctx.roundRect(-13, -27 + bob, 26 * Math.max(0, al.hp / al.maxHp), 2.5, 1.5);
+        ctx.fill();
       }
+
+      ctx.restore();
+    }
+  },
+
+  // ================= Q-VERSION CHIBI 2-HEAD MONSTERS (CUTIFIED CLASSICS!) =================
+  drawEnemies: function(ctx) {
+    for (var i = 0; i < this.enemies.length; i++) {
+      var e = this.enemies[i];
+      var bob = Math.abs(Math.sin(e.walkPhase || 0)) * 2.8;
+      var fTime = e.flashTimer > 0;
+      ctx.save();
+      ctx.translate(e.x, e.y);
+
+      // Shadow
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+      ctx.beginPath();
+      ctx.ellipse(0, e.radius * 0.72, e.radius * 0.95, e.radius * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#1e1b4b";
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (e.archId === "cultist") {
+        // Cutified Goblin: Chubby bright lime-green toddler, huge floppy ears with pink insides, giant sparkling yellow anime eyes, blushing cheeks, tiny dull toy dagger!
+        // Stubby chubby body (~10px)
+        ctx.fillStyle = fTime ? "#ffffff" : "#65a30d";
+        ctx.beginPath();
+        ctx.roundRect(-6.5, -2 - bob, 13, 12, 5);
+        ctx.fill();
+        ctx.stroke();
+        // Cute brown dungarees
+        ctx.fillStyle = fTime ? "#ffffff" : "#78350f";
+        ctx.fillRect(-5.5, 2 - bob, 11, 7);
+
+        // Huge Chibi Head (Radius 13px, >50% of height)
+        ctx.fillStyle = fTime ? "#ffffff" : "#84cc16";
+        ctx.beginPath();
+        ctx.arc(0, -14 - bob, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Big floppy ears with pink inner ear
+        ctx.fillStyle = fTime ? "#ffffff" : "#84cc16";
+        ctx.beginPath();
+        ctx.moveTo(-11, -16 - bob); ctx.quadraticCurveTo(-22, -22 - bob, -20, -10 - bob); ctx.lineTo(-10, -9 - bob);
+        ctx.moveTo(11, -16 - bob); ctx.quadraticCurveTo(22, -22 - bob, 20, -10 - bob); ctx.lineTo(10, -9 - bob);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#fda4af"; // Pink inner ears
+        ctx.beginPath();
+        ctx.ellipse(-15, -14 - bob, 4, 2.5, -0.3, 0, Math.PI * 2);
+        ctx.ellipse(15, -14 - bob, 4, 2.5, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rosy blushing cheeks
+        ctx.fillStyle = "rgba(251, 113, 133, 0.7)";
+        ctx.beginPath();
+        ctx.ellipse(-7, -10 - bob, 3, 1.8, 0, 0, Math.PI * 2);
+        ctx.ellipse(7, -10 - bob, 3, 1.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Oversized Sparkling Anime Eyes
+        [-4.5, 4.5].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.ellipse(ex, -15 - bob, 3.2, 4.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#facc15";
+          ctx.beginPath();
+          ctx.arc(ex, -14 - bob, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 1, -16 - bob, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Cute smiling open mouth
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(0, -9 - bob, 2.5, 0, Math.PI);
+        ctx.fill();
+
+        // Cute miniature toy dagger
+        ctx.fillStyle = "#cbd5e1";
+        ctx.beginPath();
+        ctx.roundRect(8, -4 - bob, 9, 3, 1.5);
+        ctx.fill();
+        ctx.stroke();
+
+      } else if (e.archId === "skeleton_warrior") {
+        // Cutified Skeleton: Big adorable round smiling skull, heart-shaped nose, glossy dark eye sockets with blue twinkle pupils, tiny ribcage & wooden toy shield!
+        // Stubby bone pelvis & legs
+        ctx.fillStyle = fTime ? "#ffffff" : "#cbd5e1";
+        ctx.fillRect(-2.5, -1 - bob, 5, 12);
+        // Mini cute ribcage
+        ctx.fillRect(-7, -1 - bob, 14, 2.5);
+        ctx.fillRect(-6, 3 - bob, 12, 2.5);
+
+        // Big round smiling skull
+        ctx.fillStyle = fTime ? "#ffffff" : "#f8fafc";
+        ctx.beginPath();
+        ctx.roundRect(-12, -24 - bob, 24, 20, 9);
+        ctx.fill();
+        ctx.stroke();
+
+        // Rosy blush on cheekbones
+        ctx.fillStyle = "rgba(251, 113, 133, 0.6)";
+        ctx.beginPath();
+        ctx.ellipse(-7.5, -14 - bob, 2.8, 1.8, 0, 0, Math.PI * 2);
+        ctx.ellipse(7.5, -14 - bob, 2.8, 1.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Large cute eye sockets with blue twinkle pupils
+        [-4.8, 4.8].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.ellipse(ex, -17 - bob, 3.8, 4.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Blue twinkle light
+          ctx.fillStyle = "#38bdf8";
+          ctx.beginPath();
+          ctx.arc(ex, -16.5 - bob, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 1, -17.8 - bob, 1, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Heart-shaped nose cavity
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(0, -13 - bob, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Grinning teeth line
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-5, -8.5 - bob); ctx.lineTo(5, -8.5 - bob);
+        ctx.moveTo(-2, -10 - bob); ctx.lineTo(-2, -7 - bob);
+        ctx.moveTo(2, -10 - bob); ctx.lineTo(2, -7 - bob);
+        ctx.stroke();
+
+        // Cute round wooden buckler on left hand
+        ctx.fillStyle = "#b45309";
+        ctx.strokeStyle = "#fde047";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(-13, -2 - bob, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+      } else if (e.archId === "shadow_imp") {
+        // Cutified Shadow Imp: Chubby plum-purple round baby body, tiny curved horns, flapping miniature bat wings with pink membranes, twinkling pink cheeks!
+        var wingFlap = Math.sin(e.walkPhase * 2) * 5;
+        // Cute mini bat wings
+        ctx.fillStyle = "#ec4899";
+        ctx.beginPath();
+        ctx.moveTo(-6, -6 - bob);
+        ctx.quadraticCurveTo(-18, -18 - bob + wingFlap, -16, -2 - bob);
+        ctx.lineTo(-6, -2 - bob);
+        ctx.moveTo(6, -6 - bob);
+        ctx.quadraticCurveTo(18, -18 - bob - wingFlap, 16, -2 - bob);
+        ctx.lineTo(6, -2 - bob);
+        ctx.fill();
+        ctx.stroke();
+
+        // Chubby round purple body
+        ctx.fillStyle = fTime ? "#ffffff" : "#6b21a8";
+        ctx.beginPath();
+        ctx.roundRect(-8, -4 - bob, 16, 14, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Giant round head
+        ctx.fillStyle = fTime ? "#ffffff" : "#7e22ce";
+        ctx.beginPath();
+        ctx.arc(0, -15 - bob, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Tiny blunt red horns
+        ctx.fillStyle = "#f43f5e";
+        ctx.beginPath();
+        ctx.moveTo(-7, -24 - bob); ctx.quadraticCurveTo(-12, -32 - bob, -5, -26 - bob);
+        ctx.moveTo(7, -24 - bob); ctx.quadraticCurveTo(12, -32 - bob, 5, -26 - bob);
+        ctx.fill();
+        ctx.stroke();
+
+        // Blushing cheeks
+        ctx.fillStyle = "rgba(251, 113, 133, 0.75)";
+        ctx.beginPath();
+        ctx.arc(-6.5, -11 - bob, 2.5, 0, Math.PI * 2);
+        ctx.arc(6.5, -11 - bob, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Big sparkling pink manga eyes
+        [-4.5, 4.5].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.ellipse(ex, -15 - bob, 3, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#f472b6";
+          ctx.beginPath();
+          ctx.arc(ex, -14 - bob, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 1, -16 - bob, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Cute impish mouth
+        ctx.strokeStyle = "#f43f5e";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(0, -9.5 - bob, 2.5, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+
+      } else if (e.archId === "orc_warrior") {
+        // Cutified Orc Toddler: Chubby 2-head green toddler, tiny blunt baby tusks, oversized iron helm tilted over forehead, chubby rounded toy battleaxe!
+        // Stubby body
+        ctx.fillStyle = fTime ? "#ffffff" : "#4d7c0f";
+        ctx.beginPath();
+        ctx.roundRect(-12, -5 - bob, 24, 18, 6);
+        ctx.fill();
+        ctx.stroke();
+        // Cute fur skirt
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(-10, 6 - bob, 20, 6);
+
+        // Massive Chibi Head (Radius 14.5px)
+        ctx.fillStyle = fTime ? "#ffffff" : "#65a30d";
+        ctx.beginPath();
+        ctx.arc(0, -17 - bob, 14.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Tilted round iron helmet with baby horns
+        ctx.fillStyle = "#475569";
+        ctx.beginPath();
+        ctx.arc(0, -21 - bob, 14, Math.PI, 0, false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Cute blunt helmet horns
+        ctx.fillStyle = "#fde047";
+        ctx.beginPath();
+        ctx.arc(-12, -22 - bob, 3.5, 0, Math.PI * 2);
+        ctx.arc(12, -22 - bob, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Blushing cheeks
+        ctx.fillStyle = "rgba(251, 113, 133, 0.7)";
+        ctx.beginPath();
+        ctx.ellipse(-7.5, -12 - bob, 3.2, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(7.5, -12 - bob, 3.2, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Big round shiny eyes
+        [-5, 5].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.ellipse(ex, -16 - bob, 3.2, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ef4444";
+          ctx.beginPath();
+          ctx.arc(ex, -15 - bob, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 1, -17 - bob, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Cute little baby tusks pointing upwards
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(-5, -8 - bob); ctx.lineTo(-4, -13 - bob); ctx.lineTo(-2, -8 - bob);
+        ctx.moveTo(2, -8 - bob); ctx.lineTo(4, -13 - bob); ctx.lineTo(5, -8 - bob);
+        ctx.fill();
+
+        // Cute rounded toy battleaxe
+        ctx.strokeStyle = "#78350f";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(11, 8 - bob); ctx.lineTo(17, -22 - bob);
+        ctx.stroke();
+        ctx.fillStyle = "#94a3b8";
+        ctx.beginPath();
+        ctx.arc(17, -19 - bob, 8, -Math.PI / 2, Math.PI / 2, false);
+        ctx.fill();
+        ctx.stroke();
+
+      } else if (e.archId === "scorpion") {
+        // Cutified Scorpion: Golden-orange dumpling body, 6 stubby waddling legs, round mitten-like boxing claws, curly tail ending in a heart-tipped barb!
+        var legWave = Math.sin(e.walkPhase * 2.5) * 3;
+        // 6 stubby waddling legs
+        ctx.strokeStyle = "#b45309";
+        ctx.lineWidth = 2.4;
+        for (var lg = -1; lg <= 1; lg++) {
+          ctx.beginPath();
+          ctx.moveTo(-8, lg * 6 - bob);
+          ctx.lineTo(-17, lg * 7 - bob + legWave * lg);
+          ctx.moveTo(8, lg * 6 - bob);
+          ctx.lineTo(17, lg * 7 - bob - legWave * lg);
+          ctx.stroke();
+        }
+
+        // Chubby round dumpling body
+        ctx.fillStyle = fTime ? "#ffffff" : "#f59e0b";
+        ctx.beginPath();
+        ctx.ellipse(0, -3 - bob, 13, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Big round mitten claws
+        ctx.fillStyle = "#d97706";
+        ctx.beginPath();
+        ctx.arc(-12, 11 - bob, 5.5, 0, Math.PI * 2);
+        ctx.arc(12, 11 - bob, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Curly tail arching over with heart tip
+        ctx.strokeStyle = "#b45309";
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -16 - bob);
+        ctx.quadraticCurveTo(8, -26 - bob, 0, -30 - bob);
+        ctx.stroke();
+
+        // Heart-shaped stinger barb!
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(0, -30 - bob, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Big glowing cute eyes & blush
+        ctx.fillStyle = "rgba(251, 113, 133, 0.75)";
+        ctx.beginPath();
+        ctx.arc(-6, 2 - bob, 2.5, 0, Math.PI * 2);
+        ctx.arc(6, 2 - bob, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        [-4, 4].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.arc(ex, -2 - bob, 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(ex - 0.7, -2.8 - bob, 1, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+      } else if (e.archId === "dark_mage") {
+        // Cutified Dark Mage: Oversized floppy wizard cowl covering 60% of body, big glowing golden button eyes peeking out, tiny stubby hands holding a cute swirling lavender star orb!
+        // Oversized floppy hooded cowl
+        ctx.fillStyle = fTime ? "#ffffff" : "#312e81";
+        ctx.beginPath();
+        ctx.roundRect(-13, -24 - bob, 26, 32, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Deep dark hood shadow with big glowing golden button eyes
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.ellipse(0, -13 - bob, 9, 6.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing golden button eyes
+        [-4.5, 4.5].forEach(function(ex) {
+          ctx.fillStyle = "#facc15";
+          ctx.beginPath();
+          ctx.arc(ex, -13 - bob, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 0.8, -14 - bob, 1, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Blushing pink cheeks peeking through hood
+        ctx.fillStyle = "rgba(251, 113, 133, 0.65)";
+        ctx.beginPath();
+        ctx.arc(-7, -8 - bob, 2.2, 0, Math.PI * 2);
+        ctx.arc(7, -8 - bob, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Swirling lavender star orb
+        var orbPulse = Math.sin(e.walkPhase * 2) * 2;
+        ctx.fillStyle = "#c084fc";
+        ctx.beginPath();
+        ctx.arc(0, 4 - bob + orbPulse, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#f3e8ff";
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 8px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("✦", 0, 7 - bob + orbPulse);
+
+      } else if (e.archId === "stone_golem") {
+        // Cutified Stone Golem: Stack of smooth rounded river pebbles/marshmallows with glowing cyan cheek runes and smiling visor!
+        // Rounded marshmallow pebble torso
+        ctx.fillStyle = fTime ? "#ffffff" : "#64748b";
+        ctx.beginPath();
+        ctx.roundRect(-14, -10 - bob, 28, 22, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Big round pebble head
+        ctx.fillStyle = fTime ? "#ffffff" : "#475569";
+        ctx.beginPath();
+        ctx.roundRect(-11, -26 - bob, 22, 17, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Glowing cyan friendly visor
+        ctx.fillStyle = "#22d3ee";
+        ctx.beginPath();
+        ctx.roundRect(-7, -20 - bob, 14, 4.5, 2);
+        ctx.fill();
+
+        // Glowing runic blush marks on stone cheeks
+        ctx.fillStyle = "#67e8f9";
+        ctx.beginPath();
+        ctx.arc(-6.5, -13 - bob, 2.2, 0, Math.PI * 2);
+        ctx.arc(6.5, -13 - bob, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Green cute clover sprout on head!
+        ctx.fillStyle = "#4ade80";
+        ctx.beginPath();
+        ctx.arc(-2, -30 - bob, 3, 0, Math.PI * 2);
+        ctx.arc(2, -30 - bob, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Round boulder fists
+        ctx.fillStyle = "#475569";
+        ctx.beginPath();
+        ctx.arc(-18, 0 - bob, 6.5, 0, Math.PI * 2);
+        ctx.arc(18, 0 - bob, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+      } else if (e.archId === "frost_wolf") {
+        // Cutified Frost Wolf: Fluffy chibi snow-pup with oversized head, round floppy ears, big black shiny nose, stubby paws, bushy pom-pom tail!
+        var pawStride = Math.sin(e.walkPhase) * 4;
+        // Stubby paws
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(-11 + pawStride, 6 - bob, 5, 8);
+        ctx.fillRect(-4 - pawStride, 6 - bob, 5, 8);
+        ctx.fillRect(4 + pawStride, 6 - bob, 5, 8);
+        ctx.fillRect(10 - pawStride, 6 - bob, 5, 8);
+
+        // Round fluffy pup body
+        ctx.fillStyle = fTime ? "#ffffff" : "#93c5fd";
+        ctx.beginPath();
+        ctx.roundRect(-14, -6 - bob, 28, 16, 7);
+        ctx.fill();
+        ctx.stroke();
+
+        // Giant round puppy head (Radius 13px)
+        ctx.fillStyle = fTime ? "#ffffff" : "#bfdbfe";
+        ctx.beginPath();
+        ctx.arc(11, -12 - bob, 12.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Soft floppy puppy ears
+        ctx.fillStyle = "#60a5fa";
+        ctx.beginPath();
+        ctx.ellipse(5, -21 - bob, 4.5, 6.5, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(17, -21 - bob, 4.5, 6.5, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Big shining puppy eyes & blush
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.arc(13, -13 - bob, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(12, -14.2 - bob, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(251, 113, 133, 0.7)";
+        ctx.beginPath();
+        ctx.arc(14, -8 - bob, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cute black button nose
+        ctx.fillStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.ellipse(20, -11 - bob, 2.2, 1.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bushy pom-pom tail
+        ctx.fillStyle = "#f8fafc";
+        ctx.beginPath();
+        ctx.arc(-18, -4 - bob, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+      } else if (e.archId === "flame_demon") {
+        // Cutified Flame Demon: Chubby crimson mini-gargoyle with rounded baby horns, blushing cheeks, glowing warm heart belly, tiny dragon wings!
+        var wingSpan = Math.sin(e.walkPhase * 2) * 4;
+        // Mini dragon wings
+        ctx.fillStyle = "#f87171";
+        ctx.beginPath();
+        ctx.moveTo(-8, -8 - bob);
+        ctx.quadraticCurveTo(-22, -22 - bob + wingSpan, -18, 0 - bob);
+        ctx.lineTo(-8, 0 - bob);
+        ctx.moveTo(8, -8 - bob);
+        ctx.quadraticCurveTo(22, -22 - bob - wingSpan, 18, 0 - bob);
+        ctx.lineTo(8, 0 - bob);
+        ctx.fill();
+        ctx.stroke();
+
+        // Chubby round red body with yellow tummy
+        ctx.fillStyle = fTime ? "#ffffff" : "#dc2626";
+        ctx.beginPath();
+        ctx.roundRect(-10, -6 - bob, 20, 18, 7);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#fef08a";
+        ctx.beginPath();
+        ctx.ellipse(0, 3 - bob, 5.5, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Giant round demon head (Radius 13.5px)
+        ctx.fillStyle = fTime ? "#ffffff" : "#ef4444";
+        ctx.beginPath();
+        ctx.arc(0, -16 - bob, 13.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Rounded baby ram horns
+        ctx.fillStyle = "#7f1d1d";
+        ctx.beginPath();
+        ctx.arc(-8, -25 - bob, 4.5, 0, Math.PI * 2);
+        ctx.arc(8, -25 - bob, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Rosy cheeks & big shining yellow eyes
+        ctx.fillStyle = "rgba(254, 240, 138, 0.7)";
+        ctx.beginPath();
+        ctx.arc(-6.5, -11 - bob, 2.5, 0, Math.PI * 2);
+        ctx.arc(6.5, -11 - bob, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        [-4.5, 4.5].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.ellipse(ex, -16 - bob, 3.2, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#facc15";
+          ctx.beginPath();
+          ctx.arc(ex, -15 - bob, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 1, -17 - bob, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+      } else if (e.archId === "void_reaver") {
+        // Cutified Void Reaver: Floating cute galaxy ghost with rounded curves, glowing teal visor, floating mini crescent wings!
+        var floatBob = Math.sin(e.walkPhase * 1.5) * 4;
+        // Floating cute mantle skirt
+        ctx.fillStyle = fTime ? "#ffffff" : "#581c87";
+        ctx.beginPath();
+        ctx.moveTo(-12, -8 - floatBob);
+        ctx.lineTo(12, -8 - floatBob);
+        ctx.quadraticCurveTo(14, 16 - floatBob, 0, 18 - floatBob);
+        ctx.quadraticCurveTo(-14, 16 - floatBob, -12, -8 - floatBob);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Big round head
+        ctx.fillStyle = fTime ? "#ffffff" : "#3b0764";
+        ctx.beginPath();
+        ctx.arc(0, -17 - floatBob, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Glowing cute cyan visor eyes
+        ctx.fillStyle = "#22d3ee";
+        ctx.beginPath();
+        ctx.roundRect(-6.5, -18 - floatBob, 13, 4, 2);
+        ctx.fill();
+
+        // Purple blush
+        ctx.fillStyle = "#d8b4fe";
+        ctx.beginPath();
+        ctx.arc(-6, -12 - floatBob, 2.2, 0, Math.PI * 2);
+        ctx.arc(6, -12 - floatBob, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Floating baby crescent wings
+        ctx.fillStyle = "#c084fc";
+        ctx.beginPath();
+        ctx.arc(-18, -4 - floatBob, 7, -Math.PI / 2, Math.PI / 2, false);
+        ctx.arc(18, -4 - floatBob, 7, Math.PI / 2, -Math.PI / 2, false);
+        ctx.fill();
+        ctx.stroke();
+
+      } else {
+        // Cutified Realm Boss: Pouty baby tyrant king with an oversized sparkling golden crown, cute round horns, tiny stubby body, and giant cartoon greatsword!
+        var bossBob = Math.sin(e.walkPhase * 0.8) * 3;
+        // Chubby body
+        ctx.fillStyle = fTime ? "#ffffff" : "#991b1b";
+        ctx.beginPath();
+        ctx.roundRect(-16, -10 - bossBob, 32, 26, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Massive Chibi King Head (Radius 18px)
+        ctx.fillStyle = fTime ? "#ffffff" : "#b91c1c";
+        ctx.beginPath();
+        ctx.arc(0, -26 - bossBob, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Cute blunt rounded horns
+        ctx.fillStyle = "#450a0a";
+        ctx.beginPath();
+        ctx.arc(-13, -37 - bossBob, 5.5, 0, Math.PI * 2);
+        ctx.arc(13, -37 - bossBob, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Oversized Sparkling Golden King Crown!
+        ctx.fillStyle = "#fde047";
+        ctx.strokeStyle = "#b45309";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-13, -42 - bossBob);
+        ctx.lineTo(-7, -54 - bossBob);
+        ctx.lineTo(0, -45 - bossBob);
+        ctx.lineTo(7, -54 - bossBob);
+        ctx.lineTo(13, -42 - bossBob);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Blushing cheeks
+        ctx.fillStyle = "rgba(254, 205, 211, 0.85)";
+        ctx.beginPath();
+        ctx.ellipse(-9, -20 - bossBob, 4, 2.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(9, -20 - bossBob, 4, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Giant glistening anime eyes
+        [-6, 6].forEach(function(ex) {
+          ctx.fillStyle = "#0f172a";
+          ctx.beginPath();
+          ctx.ellipse(ex, -26 - bossBob, 4.2, 5.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#f43f5e";
+          ctx.beginPath();
+          ctx.arc(ex, -24.5 - bossBob, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(ex - 1.5, -28 - bossBob, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(ex + 1.5, -23 - bossBob, 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Cute pouting mouth
+        ctx.strokeStyle = "#450a0a";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, -17 - bossBob, 3.5, Math.PI * 0.15, Math.PI * 0.85, true);
+        ctx.stroke();
+
+        // Giant cartoon greatsword
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(18, 12 - bossBob);
+        ctx.lineTo(26, -38 - bossBob);
+        ctx.stroke();
+        ctx.fillStyle = "#f59e0b";
+        ctx.beginPath();
+        ctx.roundRect(22, -36 - bossBob, 8, 8, 2);
+        ctx.fill();
+      }
+
+      // Cute Rounded Health Bar
+      var barW = e.isBoss ? 60 : 26;
+      var pct = Math.max(0, e.hp / e.maxHp);
+      ctx.fillStyle = "rgba(0,0,0,0.8)";
+      ctx.beginPath();
+      ctx.roundRect(-barW / 2, -e.radius - 22, barW, 4.5, 2.5);
+      ctx.fill();
+      ctx.fillStyle = e.isBoss ? "#f43f5e" : "#22c55e";
+      ctx.beginPath();
+      ctx.roundRect(-barW / 2 + 0.5, -e.radius - 21.5, (barW - 1) * pct, 3.5, 2);
+      ctx.fill();
 
       ctx.restore();
     }
