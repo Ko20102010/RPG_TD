@@ -246,7 +246,7 @@ window.GameUI = {
       htmlU += '<div class="type-tabs-row">';
       (window.GAME_DATA.towerTypes || []).forEach(function(tType) {
         var isAct = self.selectedBuildTypeId === tType.id;
-        htmlU += '<button class="type-tab-btn ' + (isAct ? 'active-type-tab' : '') + '" onclick="window.uiSelectBuildType('' + pad.id + '', '' + tType.id + '')">';
+        htmlU += '<button class="type-tab-btn ' + (isAct ? 'active-type-tab' : '') + '" onclick="window.uiSelectBuildType(\'" + pad.id + "\', \'" + tType.id + "\')">';
         htmlU += tType.icon + ' ' + tType.shortName;
         htmlU += '</button>';
       });
@@ -257,7 +257,7 @@ window.GameUI = {
       towersOfType.forEach(function(b) {
         var isSel = activeBp.id === b.id;
         var unl = eng.isBlueprintUnlocked(b.id);
-        htmlU += '<button class="tower-chip ' + (isSel ? 'selected-preview-chip' : '') + '" onclick="window.uiSelectBuildTower('' + pad.id + '', '' + b.id + '')">';
+        htmlU += '<button class="tower-chip ' + (isSel ? 'selected-preview-chip' : '') + '" onclick="window.uiSelectBuildTower(\'" + pad.id + "\', \'" + b.id + "\')">';
         htmlU += '<span>' + b.icon + ' ' + b.name + '</span>';
         htmlU += '<span style="font-size:0.62rem;color:' + (unl ? '#4ade80' : '#fde047') + ';">' + (unl ? '🪙' + b.buildCostGold : '🔒解鎖') + '</span>';
         htmlU += '</button>';
@@ -267,7 +267,7 @@ window.GameUI = {
       // Step 3: Brief Description & Confirm Build Button
       htmlU += '<div class="pad-build-confirm-row">';
       htmlU += '<span class="pad-bp-summary">' + activeBp.icon + ' ' + activeBp.name + '：' + activeBp.roleTag + ' | ' + activeBp.adviceTag + '</span>';
-      htmlU += '<button class="btn-build-confirm" onclick="window.uiBuildTower('' + pad.id + '', '' + activeBp.id + '')">';
+      htmlU += '<button class="btn-build-confirm" onclick="window.uiBuildTower(\'" + pad.id + "\', \'" + activeBp.id + "\')">';
       htmlU += '🔨 建造 (' + (activeBp.unlockCurrency === 'mana' ? '💎' : '🪙') + activeBp.buildCostGold + ')';
       htmlU += '</button>';
       htmlU += '</div>';
@@ -425,7 +425,7 @@ window.GameUI = {
       }
 
       if (!isMax) {
-        html += '<button class="btn-secondary" style="margin-top:3px;" onclick="window.uiNavigateToPad('' + pad.id + '')">📍 導航踏陣 (' + cIcon + rem + ')</button>';
+        html += '<button class="btn-secondary" style="margin-top:3px;" onclick="window.uiNavigateToPad(\'" + pad.id + "\')">📍 導航踏陣 (' + cIcon + rem + ')</button>';
       } else {
         html += '<div style="font-size:0.72rem;color:#4ade80;font-weight:800;margin-top:3px;">✨ 已達最高等級</div>';
       }
@@ -447,7 +447,7 @@ window.GameUI = {
       html += '<div style="font-size:0.70rem;color:#fde047;">' + b.roleTag + ' · ' + b.adviceTag + '</div>';
       html += '<div style="font-size:0.68rem;color:#cbd5e1;">' + b.desc + '</div>';
       if (!unl) {
-        html += '<button class="btn-action" style="margin-top:3px;" onclick="window.uiUnlockBlueprint('' + b.id + '')">🔓 解鎖藍圖 (' + cIc + b.unlockCost + ')</button>';
+        html += '<button class="btn-action" style="margin-top:3px;" onclick="window.uiUnlockBlueprint(\'" + b.id + "\')">🔓 解鎖藍圖 (' + cIc + b.unlockCost + ')</button>';
       }
       html += '</div>';
     });
@@ -940,32 +940,6 @@ window.uiTriggerRebirth = function() {
 window.uiReviveCitadel = function() {
   window.SoundEngine.init();
   window.GameEngine.reviveFromDefeat();
-};
-
-// Step-On Unbuilt Tower Picker Handlers
-window.uiSelectBuildType = function(padId, typeId) {
-  window.SoundEngine.init();
-  window.GameUI.selectedBuildTypeId = typeId;
-  var firstOf = window.GAME_DATA.towerBlueprints.find(function(b) { return b.typeId === typeId; });
-  if (firstOf) {
-    window.GameUI.selectedBuildBpId = firstOf.id;
-  }
-  window.GameUI.updateContextCard();
-};
-
-window.uiSelectBuildTower = function(padId, bpId) {
-  window.SoundEngine.init();
-  var bp = window.GameEngine.getBlueprintById(bpId);
-  if (bp) {
-    window.GameUI.selectedBuildTypeId = bp.typeId;
-    window.GameUI.selectedBuildBpId = bp.id;
-  }
-  window.GameUI.updateContextCard();
-};
-
-window.uiBuildTower = function(padId, bpId) {
-  window.SoundEngine.init();
-  window.GameEngine.buildPadTower(padId, bpId);
 };
 
 // Step-On Unbuilt Tower Picker Handlers
